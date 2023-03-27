@@ -14,24 +14,19 @@
             width: 50%; 
             height: 380px; 
             margin: 0 auto;
-            padding-top: 50px;
         }
 
-        .pie-chart-container {
-        height: 360px;
-        width: 360px;
-        float: left;
-        }
+            .pie-chart-container {
+            height: 360px;
+            width: 360px;
+            float: left;
+            }
     </style>
 </head>
 <body>
     <div class="chart-container">
         <center>
-        <h1>{{ name }}</h1>
-        <p>Thickness: {{ deepness2 - deepness1 }}m</p>
-        <p>Latitude: {{ latitude }}</p>
-        <p>Longitude: {{ longitude }}</p>
-        <p>Description: {{ description }}</p>
+        <h1>Responsive Pie Chart</h1>
         </center>
         <div>
             <canvas id="pie-chart-container"></canvas>
@@ -44,11 +39,12 @@
         new Chart(document.getElementById("pie-chart-container"), {
         	type : 'pie',
         	data : {
-        		labels : [ "Sandstone", "Clay", "Other"
+        		labels : [ "A", "B", "C", "D"
         				],
         		datasets : [ {
-        			backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#51EAEA" ],
-        			data : [ {{ sandstone }}, {{ clay }}, 100 - {{ sandstone }} - {{ clay }} ]
+        			backgroundColor : [ "#51EAEA", "#FCDDB0",
+        					"#FF9D76", "#FB3569", "#82CD47" ],
+        			data : [ 418, 263, 434, 586, 332 ]
         		} ]
         	},
         	options : {
@@ -62,3 +58,4 @@
 	</script>
 </body>
 </html>
+
