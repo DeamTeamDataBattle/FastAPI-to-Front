@@ -14,13 +14,14 @@
             width: 50%; 
             height: 380px; 
             margin: 0 auto;
+            padding-top: 50px;
         }
 
-            .pie-chart-container {
-            height: 360px;
-            width: 360px;
-            float: left;
-            }
+        .pie-chart-container {
+        height: 360px;
+        width: 360px;
+        float: left;
+        }
     </style>
 </head>
 <body>
@@ -46,8 +47,7 @@
         		labels : [ "Sandstone", "Clay", "Other"
         				],
         		datasets : [ {
-        			backgroundColor : [ "#51EAEA", "#FCDDB0",
-        					"#FF9D76" ],
+        			backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#51EAEA" ],
         			data : [ {{ sandstone }}, {{ clay }}, 100 - {{ sandstone }} - {{ clay }} ]
         		} ]
         	},
