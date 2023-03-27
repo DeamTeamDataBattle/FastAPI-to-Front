@@ -1,0 +1,12 @@
+:root {
+   /* --primary: #d81b60; */
+    --error: var(--del-color);
+}
+
+.error {
+    color: var(--error);
+}
+
+.hidden {
+    display: none;
+}
