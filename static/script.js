@@ -12,7 +12,7 @@ function update_progress(id, value) {
 }
 
 function reset_upload() {
-  document.getElementById("upload-info").classList.add("hidden");
+  //document.getElementById("upload-info").classList.add("hidden");
   document.getElementById("upload-progress-bar").classList.add("hidden");
   document.getElementById("upload-error").classList.add("hidden");
   
@@ -21,8 +21,15 @@ function reset_upload() {
   console.log(pdf);
   let size = Math.round(pdf["size"]/1e4)/100;
   let est_time = Math.round(size * 100 / 7.75) / 100;
-  toggle_hide("upload-info");
+  //toggle_hide("upload-info");
   document.getElementById("upload-info").innerText = "Doc size: " + size + "MB\nEstimate time: " + est_time + "s";
+}
+
+async function get_notifications() {
+  let res = await fetch("/notif", {method: "GET"});
+  res = await res.json();
+  let notif_text = res["notif"];
+  document.getElementById("upload-info").innerText = notif_text;
 }
 
 async function upload_pdf() {
@@ -30,16 +37,18 @@ async function upload_pdf() {
   if (typeof pdf === 'undefined') {
     alert("please select a document first");
   } else {
-    toggle_hide("upload-progress-bar");
-    update_progress("upload-progress-bar", 0);
+    //toggle_hide("upload-progress-bar");
+    //update_progress("upload-progress-bar", 0);
 
     // send request
     let body = new FormData();
     body.append("file", pdf);
+    let notifID = setInterval(get_notifications, 200);
     let res = await fetch("/upload-pdf", {method: "POST", body: body});
     let data = await res.json();
+    clearInterval(notifID);
     // update page with html
-    update_progress("upload-progress-bar", 100);
+    //update_progress("upload-progress-bar", 100);
     if ("error" in data) {
       toggle_hide("upload-error");
       document.getElementById("upload-error").innerText = data["error"];
@@ -47,5 +56,6 @@ async function upload_pdf() {
       document.getElementById("upload-info").innerText = data["info"];
     }
     console.log(data);
+    document.getElementById("pdf-upload").value = "";
   }
 }
