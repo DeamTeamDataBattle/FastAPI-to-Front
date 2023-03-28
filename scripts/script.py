@@ -117,8 +117,22 @@ def separate_log(coords, image, path):
             g = abs(x2 - x1)
             if W//5 < g < W//2:
                 if len(widths) > 5:
-                    g_theory = max(set(widths), key = widths.count)
-                    if g_theory - 5 < g < g_theory + 5:
+                    g_theory = int(max(set(widths), key = widths.count))
+                    if g_theory - 3 < g < g_theory + 3:
+                        if len(x_start) > 3:
+                            x1_t = x_start[-1]
+                            if not (0.9*x1_t < x1 < 1.1*x1_t):
+                                x1 = x_start[-1]
+                                if len(xs) > 0:
+                                    X = x1
+                                    d_min = W
+                                    for x in xs:
+                                        d = abs(x - x1)
+                                        if d < 5 and d < d_min:
+                                            d_min = d
+                                            X = x
+                                    x1 = X
+                                x2 = x1 + g_theory
                         x_start.append(min(x1, x2))
                         points.append([min(x1,x2),i*H//N])
                         #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
@@ -140,7 +154,7 @@ def separate_log(coords, image, path):
                 x1 = X
 
             x2 = int(x1 + max(set(widths), key = widths.count))
-            #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
+            #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,255,0), thickness=2)
             x_start.append(x1)
             points.append([min(x1,x2),i*H//N])
 
