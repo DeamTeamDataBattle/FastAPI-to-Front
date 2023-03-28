@@ -83,39 +83,78 @@ def separate_log(coords, image, path):
     w = (X_max-X_min)*2
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
-    N = 20
+    N = H//W
     write_notif("straightening log 2")
+    widths = []
+    x_start = []
+    min_gap = W // 4
+    points = []
     for i in range(N):
-        log_img_crop = log_img[i*H//N:(i+1)*H//N]
+        log_img_crop = log_img[i*H//N:min((i+1)*H//N, H)]
         # straighten image
         log_img_crop_mod = cv2.cvtColor(log_img_crop, cv2.COLOR_BGR2GRAY)
         log_img_crop_mod = cv2.GaussianBlur(log_img_crop_mod, (3,3), 0)
         log_img_crop_mod = cv2.threshold(log_img_crop_mod, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
         # Detect vertical line
-        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1,5))
+        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1,W//4))
         log_img_crop_mod = cv2.morphologyEx(log_img_crop_mod, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
 
-        log_img_crop_mod = cv2.Canny(log_img_crop_mod, 50, 150, apertureSize=3)
+        contours, hierarchy = cv2.findContours(log_img_crop_mod,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 
-        lines = cv2.HoughLines(log_img_crop_mod, 1, np.pi / 180, 200)
-        # Draw the lines
-        if lines is not None:
-            print("lines: %d" % len(lines))
-            for j in range(0, len(lines)):
-                rho = lines[j][0][0]
-                theta = lines[j][0][1]
-                a = np.cos(theta)
-                b = np.sin(theta)
-                x0 = a * rho
-                y0 = b * rho
-                pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-                pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-                log_img_crop = cv2.line(log_img_crop, pt1, pt2, (0,0,255), 2)
+        xs = []
+        for c in contours:
+            x,y,w,h = cv2.boundingRect(c)
+            if h > 0.9*W:
+                xs.append(x)
+                #log_img_crop = cv2.rectangle(log_img_crop, (x,0), (x+w, W), color=(255,0,0), thickness=1)
+        pairs = []
+        for j in range(len(xs)-1):
+            pairs.append([xs[j], xs[j+1]])
 
+        found = False
+        for x1, x2 in pairs:
+            g = abs(x2 - x1)
+            if W//5 < g < W//2:
+                if len(widths) > 5:
+                    g_theory = max(set(widths), key = widths.count)
+                    if g_theory - 5 < g < g_theory + 5:
+                        x_start.append(min(x1, x2))
+                        points.append([min(x1,x2),i*H//N])
+                        #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
+                        found = True
+                        break
+                widths.append(np.ceil(abs(x1 - x2)/2)*2)
+        
+        if not found and len(x_start) > 0:
+            # use last value closest to last
+            x1 = x_start[-1]
+            if len(xs) > 0:
+                X = x1
+                d_min = W
+                for x in xs:
+                    d = abs(x - x1)
+                    if d < 5 and d < d_min:
+                        d_min = d
+                        X = x
+                x1 = X
 
-        cv2.imwrite(path.format(str(i)), log_img_crop)
-        cv2.imwrite(path.format(str(i)+"_mod"), log_img_crop_mod)
+            x2 = int(x1 + max(set(widths), key = widths.count))
+            #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
+            x_start.append(x1)
+            points.append([min(x1,x2),i*H//N])
+
+        #cv2.imwrite(path.format(str(i)), log_img_crop)
+        #cv2.imwrite(path.format(str(i)+"_mod"), log_img_crop_mod)
+
+    g = int(max(set(widths), key = widths.count))
+    x1, y1 = points[0]
+    img1 = log_img[y1:y1+W, x1:x1+g]
+    for i in range(1, len(points)):
+        x1, y1 = points[i]
+        img2 = log_img[y1:y1+W, x1:x1+g]
+        img1 = np.concatenate((img1, img2), axis=0)
+    cv2.imwrite(path.format("logo"), img1)
 
 
 
