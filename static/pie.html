@@ -27,7 +27,7 @@
     <div class="chart-container">
         <center>
             <h1>{{ name }}</h1>
-            <p>Thickness: {{ deepness2 - deepness1 }}m</p>
+            <p>Thickness: {%if (deepness2 - deepness1) == 0 %} Not given {% else %} {{ deepness2 - deepness1}}m {% endif %}</p>
             <p>Latitude: {{ latitude }}</p>
             <p>Longitude: {{ longitude }}</p>
             <p>Description: {{ description }}</p>
