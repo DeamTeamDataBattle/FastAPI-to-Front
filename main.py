@@ -10,7 +10,8 @@ from fastapi import FastAPI,Request,Path,File, UploadFile
 from pydantic import BaseModel
 
 # custom package
-from scripts.pdftoimage import convert_path
+from scripts.script import process
+
 
 # class Item(BaseModel):
 #     name : str
@@ -25,7 +26,11 @@ from scripts.pdftoimage import convert_path
 app = FastAPI()
 templates = Jinja2Templates(directory="static")
 
-@app.get("/pie/")
+@app.exception_handler(404)
+async def http_exception_handler(request, exc):
+    return RedirectResponse("/404")
+
+@app.get("/pie")
 async def pie(
         request: Request,
         name : str = "Well",
@@ -50,12 +55,12 @@ async def pie(
             "description": description
         })
 
-@app.exception_handler(404)
-async def http_exception_handler(request, exc):
-    return RedirectResponse("/404")
+@app.get("/notif")
+def get_notif():
+    return {"notif": open("data/notification.txt", 'r').read()}
 
 @app.post("/upload-pdf")
-async def create_upload_file(file: UploadFile = File(...)):
+def create_upload_file(file: UploadFile = File(...)):
     if file.headers["content-type"] != "application/pdf":
         return {"file": file,
                 "error": "not a pdf"}
@@ -69,19 +74,14 @@ async def create_upload_file(file: UploadFile = File(...)):
                 "error": "Error uploading the file {}".format(e)}
     finally:
         try:
-            image_path, pages, seconds, size = convert_path(path, file.filename[:-4])
+            res = process(path)
         except Exception as e:
             return {"file": file,
                     "path": path, 
-                    "error": "Error with the file {}".format(e)}
+                    "error": "Error with the file: {}".format(e)}
         finally: 
             file.file.close()
     return {"path": path,
-            "file": file.filename,
-            "images": image_path, 
-            "pages-converted": pages,
-            "seconds": seconds, 
-            "pdf-size": size,
-            "info": "Uploaded {0}MB in {1}s".format(size, seconds)}
+            "file": file.filename} | res
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
