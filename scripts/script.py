@@ -1,6 +1,7 @@
 import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib, torch, json
 from PIL import Image
 from scripts.get_log_page import get_log_image 
+from scripts.extract import cluster_log
 
 def write_notif(notif, write=True):
     if not write:
@@ -60,10 +61,9 @@ def separate_pattern(img, path):
             x,y,w,h = box
             s = 5
             box_img = image[y+s:y+h-s, x+s:x+w-s]
-            cv2.imwrite(path.format(text), box_img)
+            cv2.imwrite(path.format("legend_"+text), box_img)
 
 def separate_log(coords, image, path):
-    write_notif("straightening log 1")
     img = np.array(image)
     H,W,D = img.shape
     Xmin,Xmax,Ymin,Ymax = [],[],[],[]
@@ -84,7 +84,6 @@ def separate_log(coords, image, path):
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
     N = H//W
-    write_notif("straightening log 2")
     widths = []
     x_start = []
     min_gap = W // 4
@@ -112,27 +111,28 @@ def separate_log(coords, image, path):
         for j in range(len(xs)-1):
             pairs.append([xs[j], xs[j+1]])
 
+        gap = 15
         found = False
         for x1, x2 in pairs:
             g = abs(x2 - x1)
             if W//5 < g < W//2:
                 if len(widths) > 5:
                     g_theory = int(max(set(widths), key = widths.count))
-                    if g_theory - 3 < g < g_theory + 3:
-                        if len(x_start) > 3:
+                    if g_theory - gap < g < g_theory + gap:
+                        if len(x_start) > 5:
                             x1_t = x_start[-1]
-                            if not (0.9*x1_t < x1 < 1.1*x1_t):
-                                x1 = x_start[-1]
-                                if len(xs) > 0:
-                                    X = x1
-                                    d_min = W
-                                    for x in xs:
-                                        d = abs(x - x1)
-                                        if d < 5 and d < d_min:
-                                            d_min = d
-                                            X = x
-                                    x1 = X
-                                x2 = x1 + g_theory
+                            if not (x1 - gap < x1_t < x1 + gap):
+                                x1 = x1_t
+                            if len(xs) > 0:
+                                X = x1
+                                d_min = W
+                                for x in xs:
+                                    d = abs(x - x1)
+                                    if d < gap*2 and d < d_min:
+                                        d_min = d
+                                        X = x
+                                x1 = X
+                                x2 = x1 + g
                         x_start.append(min(x1, x2))
                         points.append([min(x1,x2),i*H//N])
                         #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
@@ -148,7 +148,7 @@ def separate_log(coords, image, path):
                 d_min = W
                 for x in xs:
                     d = abs(x - x1)
-                    if d < 5 and d < d_min:
+                    if d < gap*2 and d < d_min:
                         d_min = d
                         X = x
                 x1 = X
@@ -168,7 +168,8 @@ def separate_log(coords, image, path):
         x1, y1 = points[i]
         img2 = log_img[y1:y1+W, x1:x1+g]
         img1 = np.concatenate((img1, img2), axis=0)
-    cv2.imwrite(path.format("logo"), img1)
+    cv2.imwrite(path.format("image"), img1)
+    return path.format("image")
 
 
 
@@ -183,13 +184,17 @@ def process(pdf_path):
     print('model loaded')
     write_notif("model loaded")
 
-    dir_path = "data/images/"+pdf_path[10:-4]
+    dir_path = os.path.join("data/images/",pdf_path[10:-4])
+    pattern_dir = os.path.join(dir_path,"patterns")
 
     print(dir_path)
     print(pdf_path)
 
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
+
+    if not os.path.exists(pattern_dir):
+        os.mkdir(pattern_dir)
 
     log_image = get_log_image(pdf_path, dpi=200, save=False)
     cv2.imwrite(dir_path+"/log_large.jpg", log_image)
@@ -240,14 +245,18 @@ def process(pdf_path):
                 crop_large = cropped_large.crop((xmin, ymin, xmax, ymax))
                 #crop_large.save(dir_path+"/%s_%s_large.jpg" % (LABELS[value], key))
                 if value == 2:
-                    separate_pattern(crop_large, dir_path+"/{}.jpg")
+                    separate_pattern(crop_large, pattern_dir+"/{}.jpg")
                 if value == 1:
                     log_coords.append([xmin, ymin, xmax, ymax])
                     #crop_large.save(dir_path+"/%d_%s_log.jpg" % (i, key))
                 if value == 0:
                     print("legend found", i)
-                    crop_large.save(dir_path+"/%d_legend.jpg" % i)
+                    #crop_large.save(dir_path+"/%d_legend.jpg" % i)
 
     write_notif("straightening log")
-    separate_log(log_coords, img, dir_path+"/log_{}.jpg")
-    return {"info": "finished :D"}
+    log_path = separate_log(log_coords, img, dir_path+"/log_{}.jpg")
+    write_notif("clustering log")
+    out = cluster_log(log_path, pattern_dir+"/")
+    write_notif("end")
+    return {"info": "finished :D",
+            "data": out}

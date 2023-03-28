@@ -12,6 +12,7 @@ function update_progress(id, value) {
 }
 
 function reset_upload() {
+  document.getElementById("upload-info").innerText = "";
   //document.getElementById("upload-info").classList.add("hidden");
   document.getElementById("upload-progress-bar").classList.add("hidden");
   document.getElementById("upload-error").classList.add("hidden");
@@ -32,6 +33,24 @@ async function get_notifications() {
   document.getElementById("upload-info").innerText = notif_text;
 }
 
+function gotopie(data) {
+  keys = ["sand", "clay", "lime", "shale", "salt", "silt", "chert"];
+  values = Array(keys.length).fill(0);
+  let total = 0;
+  comp = data["data"];
+  for (var key in comp){
+    for (let i=0; i<keys.length; i++){
+      if (key.includes(keys[i])){
+        values[i] += comp[key];
+        total += comp[key];
+      }
+    }
+  }
+  let sand = Math.round(100*values[0]/total);
+  let clay = Math.round(100*values[1]/total)
+  window.location.href = "/pie?name="+data["file"]+"&sandstone="+sand+"&clay="+clay;
+}
+
 async function upload_pdf() {
   let pdf = document.getElementById("pdf-upload").files[0];
   if (typeof pdf === 'undefined') {
@@ -43,10 +62,11 @@ async function upload_pdf() {
     // send request
     let body = new FormData();
     body.append("file", pdf);
+    document.getElementById("upload-info").innerText = "start";
     let notifID = setInterval(get_notifications, 200);
     let res = await fetch("/upload-pdf", {method: "POST", body: body});
-    let data = await res.json();
-    clearInterval(notifID);
+    let data = await res.json().then(clearInterval(notifID));
+    console.log(data);
     // update page with html
     //update_progress("upload-progress-bar", 100);
     if ("error" in data) {
@@ -54,8 +74,8 @@ async function upload_pdf() {
       document.getElementById("upload-error").innerText = data["error"];
     } else {
       document.getElementById("upload-info").innerText = data["info"];
+      gotopie(data);
     }
-    console.log(data);
     document.getElementById("pdf-upload").value = "";
   }
 }

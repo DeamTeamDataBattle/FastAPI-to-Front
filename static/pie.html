@@ -1,13 +1,10 @@
-<!DOCTYPE html>
-<html>
+<html lang="en" data-theme="dark">
 <head>
-    <title>Chart JS Pie Chart</title>
+    <title>Battle Pie</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/pico.min.css">
     <style>
         .chart-container { 
             width: 50%; 
@@ -44,7 +41,7 @@
             data : {
                 labels : [ "Sandstone", "Clay", "Other"],
                 datasets : [ {
-                    backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#51EAEA" ],
+                    backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#716A7A" ],
                     data : [ {{ sandstone }}, {{ clay }}, 100 - {{ sandstone }} - {{ clay }} ]
                 } ]
             },
