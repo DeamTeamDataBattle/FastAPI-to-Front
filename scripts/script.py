@@ -63,6 +63,7 @@ def separate_pattern(img, path):
             cv2.imwrite(path.format(text), box_img)
 
 def separate_log(coords, image, path):
+    write_notif("straightening log 1")
     img = np.array(image)
     H,W,D = img.shape
     Xmin,Xmax,Ymin,Ymax = [],[],[],[]
@@ -79,13 +80,42 @@ def separate_log(coords, image, path):
     Y_min = 0
     Y_max = H
 
-    w = 20
+    w = (X_max-X_min)*2
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
-    log_img_1 = log_img[:H//2]
-    log_img_2 = log_img[H//2:]
-    cv2.imwrite(path.format("1"), log_img_1)
-    cv2.imwrite(path.format("2"), log_img_2)
+    N = 20
+    write_notif("straightening log 2")
+    for i in range(N):
+        log_img_crop = log_img[i*H//N:(i+1)*H//N]
+        # straighten image
+        log_img_crop_mod = cv2.cvtColor(log_img_crop, cv2.COLOR_BGR2GRAY)
+        log_img_crop_mod = cv2.GaussianBlur(log_img_crop_mod, (3,3), 0)
+        log_img_crop_mod = cv2.threshold(log_img_crop_mod, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+        # Detect vertical line
+        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1,5))
+        log_img_crop_mod = cv2.morphologyEx(log_img_crop_mod, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+
+        log_img_crop_mod = cv2.Canny(log_img_crop_mod, 50, 150, apertureSize=3)
+
+        lines = cv2.HoughLines(log_img_crop_mod, 1, np.pi / 180, 200)
+        # Draw the lines
+        if lines is not None:
+            print("lines: %d" % len(lines))
+            for j in range(0, len(lines)):
+                rho = lines[j][0][0]
+                theta = lines[j][0][1]
+                a = np.cos(theta)
+                b = np.sin(theta)
+                x0 = a * rho
+                y0 = b * rho
+                pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+                pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+                log_img_crop = cv2.line(log_img_crop, pt1, pt2, (0,0,255), 2)
+
+
+        cv2.imwrite(path.format(str(i)), log_img_crop)
+        cv2.imwrite(path.format(str(i)+"_mod"), log_img_crop_mod)
 
 
 
@@ -141,6 +171,7 @@ def process(pdf_path):
             i += 1
         else:
             break
+        write_notif("\nscan with model", write=False)
         results = model(cropped_small)
         res = json.loads(results.pandas().xyxy[0].to_json())
         if res["name"]:
@@ -164,5 +195,6 @@ def process(pdf_path):
                     print("legend found", i)
                     crop_large.save(dir_path+"/%d_legend.jpg" % i)
 
+    write_notif("straightening log")
     separate_log(log_coords, img, dir_path+"/log_{}.jpg")
     return {"info": "finished :D"}
