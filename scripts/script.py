@@ -2,7 +2,7 @@ import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.py
 from PIL import Image
 from scripts.get_log_page import get_log_image 
 from scripts.extract import cluster_log
-from tyFinder.decoupageImage import finale
+#from tyFinder.decoupageImage import finale
 
 def write_notif(notif, write=True):
     if not write:
@@ -64,6 +64,8 @@ def separate_pattern(img, path):
             box_img = image[y+s:y+h-s, x+s:x+w-s]
             cv2.imwrite(path.format("legend_"+text), box_img)
 
+# log extration
+# the aim is to find the log colon and straighten it
 def separate_log(coords, image, path):
     img = np.array(image)
     H,W,D = img.shape

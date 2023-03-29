@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 # custom package
 from scripts.script import process
+from scripts.save import save_results, check_if_already_processed, get_res
 
 
 # class Item(BaseModel):
@@ -66,22 +67,28 @@ def create_upload_file(file: UploadFile = File(...)):
         return {"file": file,
                 "error": "not a pdf"}
     path = "data/pdfs/"+file.filename
-    try: 
-        contents = file.file.read()
-        with open(path, "wb+") as f:
-            f.write(contents)
-    except Exception as e:
-        return {"path": path, 
-                "error": "Error uploading the file {}".format(e)}
-    finally:
-        try:
-            res = process(path)
+    if not check_if_already_processed(path):
+        print("new file, processing")
+        try: 
+            contents = file.file.read()
+            with open(path, "wb+") as f:
+                f.write(contents)
         except Exception as e:
-            return {"file": file,
-                    "path": path, 
-                    "error": "Error with the file: {}".format(e)}
-        finally: 
-            file.file.close()
+            return {"path": path, 
+                    "error": "Error uploading the file {}".format(e)}
+        finally:
+            try:
+                res = process(path)
+                save_results(path, res)
+            except Exception as e:
+                return {"file": file,
+                        "path": path, 
+                        "error": "Error with the file: {}".format(e)}
+            finally: 
+                file.file.close()
+    else:
+        print("already seen, fetching data")
+        res = get_res(path)
     elapsed = round(time.time() - start, 3)
     return {"path": path,
             "file": file.filename,
