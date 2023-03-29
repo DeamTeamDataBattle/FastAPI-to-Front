@@ -19,6 +19,9 @@ def mv_images(pdf_path):
     image_dir = os.path.join("data/images/",pdf_path[10:-4])
     pattern_dir = os.path.join(image_dir, "patterns")
     assets_dir = "static/images"
+    files = [assets_dir+"/patterns/"+f for f in os.listdir(assets_dir+"/patterns/")]
+    for f in files:
+        os.remove(f)
     # copy log image
     shutil.copyfile(image_dir+"/log_image.jpg", assets_dir+"/log.jpg")
     shutil.copyfile(image_dir+"/cluster.png", assets_dir+"/cluster.jpg")

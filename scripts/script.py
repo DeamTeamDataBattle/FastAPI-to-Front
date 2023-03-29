@@ -86,20 +86,21 @@ def separate_log(coords, image, path):
     w = (X_max-X_min)*2
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
-    N = H//W
+    N = H//(W//1)
     widths = []
     x_start = []
     min_gap = W // 4
     points = []
     for i in range(N):
         log_img_crop = log_img[i*H//N:min((i+1)*H//N, H)]
+        img_h, img_w, img_d = log_img_crop.shape
         # straighten image
         log_img_crop_mod = cv2.cvtColor(log_img_crop, cv2.COLOR_BGR2GRAY)
         log_img_crop_mod = cv2.GaussianBlur(log_img_crop_mod, (3,3), 0)
         log_img_crop_mod = cv2.threshold(log_img_crop_mod, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
         # Detect vertical line
-        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1,W//4))
+        vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1,W//5))
         log_img_crop_mod = cv2.morphologyEx(log_img_crop_mod, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
 
         contours, hierarchy = cv2.findContours(log_img_crop_mod,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -107,56 +108,65 @@ def separate_log(coords, image, path):
         xs = []
         for c in contours:
             x,y,w,h = cv2.boundingRect(c)
-            if h > 0.9*W:
+            if h > W//6:
                 xs.append(x)
                 #log_img_crop = cv2.rectangle(log_img_crop, (x,0), (x+w, W), color=(255,0,0), thickness=1)
-        pairs = []
-        for j in range(len(xs)-1):
-            pairs.append([xs[j], xs[j+1]])
 
-        gap = 15
+        xs.sort()
+        pairs = []
+        gaps = []
+        for j in range(len(xs)-1):
+            g = abs(xs[j] - xs[j+1])
+            if img_w//6 < g < img_w//3:
+                #log_img_crop = cv2.rectangle(log_img_crop, (xs[j],0), (xs[j+1], W), color=(255,255,0), thickness=1)
+                pairs.append([xs[j], xs[j+1]])
+                gaps.append(np.ceil(g/2)*2)
+
         found = False
-        for x1, x2 in pairs:
-            g = abs(x2 - x1)
-            if W//5 < g < W//2:
-                if len(widths) > 5:
-                    g_theory = int(max(set(widths), key = widths.count))
-                    if g_theory - gap < g < g_theory + gap:
-                        if len(x_start) > 5:
-                            x1_t = x_start[-1]
-                            if not (x1 - gap < x1_t < x1 + gap):
-                                x1 = x1_t
-                            if len(xs) > 0:
-                                X = x1
-                                d_min = W
-                                for x in xs:
-                                    d = abs(x - x1)
-                                    if d < gap*2 and d < d_min:
-                                        d_min = d
-                                        X = x
-                                x1 = X
-                                x2 = x1 + g
-                        x_start.append(min(x1, x2))
-                        points.append([min(x1,x2),i*H//N])
-                        #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
-                        found = True
-                        break
-                widths.append(np.ceil(abs(x1 - x2)/2)*2)
-        
+        if gaps:
+            gap = int(max(set(gaps), key=gaps.count))
+            widths.append(gap)
+            for x1, x2 in pairs:
+                x1=min(x1,x2)
+                x2=max(x1,x2)
+                g = abs(x2 - x1)
+                if 0.9*gap < g < 1.1*gap:
+                    # right size
+                    if len(x_start) > 0:
+                        x1_t = x_start[-1]
+                        if not (x1 - 15 < x1_t < x1 + 15):
+                            x1 = x1_t
+                        if len(xs) > 0:
+                            X = x1
+                            d_min = W
+                            for x in xs:
+                                d = abs(x - x1)
+                                if d < gap*2 and d < d_min:
+                                    d_min = d
+                                    X = x
+                            x1 = X
+                    x2 = x1 + gap
+                    x_start.append(min(x1, x2))
+                    points.append([min(x1,x2),i*H//N])
+                    #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,0,255), thickness=2)
+                    found = True
+                    break
+
         if not found and len(x_start) > 0:
             # use last value closest to last
+            gap = int(max(set(widths), key=widths.count))
             x1 = x_start[-1]
             if len(xs) > 0:
                 X = x1
                 d_min = W
                 for x in xs:
                     d = abs(x - x1)
-                    if d < gap*2 and d < d_min:
+                    if d < gap/2 and d < d_min:
                         d_min = d
                         X = x
                 x1 = X
 
-            x2 = int(x1 + max(set(widths), key = widths.count))
+            x2 = x1 + gap
             #log_img_crop = cv2.rectangle(log_img_crop, (x1,0), (x2, W), color=(0,255,0), thickness=2)
             x_start.append(x1)
             points.append([min(x1,x2),i*H//N])
@@ -164,15 +174,18 @@ def separate_log(coords, image, path):
         #cv2.imwrite(path.format(str(i)), log_img_crop)
         #cv2.imwrite(path.format(str(i)+"_mod"), log_img_crop_mod)
 
-    g = int(max(set(widths), key = widths.count))
-    x1, y1 = points[0]
-    img1 = log_img[y1:y1+W, x1:x1+g]
-    for i in range(1, len(points)):
-        x1, y1 = points[i]
-        img2 = log_img[y1:y1+W, x1:x1+g]
-        img1 = np.concatenate((img1, img2), axis=0)
-    cv2.imwrite(path.format("image"), img1)
-    return path.format("image")
+    g = int(max(set(widths), key=widths.count))
+    if len(points) > 0:
+        x1, y1 = points[0]
+        img1 = log_img[y1:y1+W, x1:x1+g]
+        for i in range(1, len(points)):
+            x1, y1 = points[i]
+            img2 = log_img[y1:y1+W, x1:x1+g]
+            img1 = np.concatenate((img1, img2), axis=0)
+        cv2.imwrite(path.format("image"), img1)
+        return path.format("image")
+    else:
+        raise Exception("log image could not be located")
 
 
 
