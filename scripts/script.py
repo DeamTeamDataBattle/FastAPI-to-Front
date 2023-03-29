@@ -18,6 +18,7 @@ def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
 
 def separate_pattern(img, path):
+    important_names = ["clay", "sand", "silt", "shale", "chalk", "lime", "chert"]
     image = np.array(img)
     H,W,D = image.shape
 
@@ -62,7 +63,10 @@ def separate_pattern(img, path):
             x,y,w,h = box
             s = 5
             box_img = image[y+s:y+h-s, x+s:x+w-s]
-            cv2.imwrite(path.format("legend_"+text), box_img)
+            for name in important_names:
+                if name in text:
+                    cv2.imwrite(path.format("legend_"+name), box_img)
+                    break
 
 # log extration
 # the aim is to find the log colon and straighten it
