@@ -2,6 +2,7 @@ import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.py
 from PIL import Image
 from scripts.get_log_page import get_log_image 
 from scripts.extract import cluster_log
+from tyFinder.decoupageImage import finale
 
 def write_notif(notif, write=True):
     if not write:
@@ -257,6 +258,8 @@ def process(pdf_path):
     log_path = separate_log(log_coords, img, dir_path+"/log_{}.jpg")
     write_notif("clustering log")
     out = cluster_log(log_path, pattern_dir+"/")
+    write_notif("ty placement")
+    #tf_out = finale(log_path)
     write_notif("end")
     return {"info": "finished :D",
             "data": out}

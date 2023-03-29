@@ -74,7 +74,10 @@ async function upload_pdf() {
       document.getElementById("upload-error").innerText = data["error"];
     } else {
       document.getElementById("upload-info").innerText = data["info"];
-      gotopie(data);
+      setTimeout(() => {
+        gotopie(data);
+      },
+      1500);
     }
     document.getElementById("pdf-upload").value = "";
   }

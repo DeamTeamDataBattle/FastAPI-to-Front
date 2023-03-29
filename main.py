@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, time
 from enum import Enum
 from typing import Union
 
@@ -61,6 +61,7 @@ def get_notif():
 
 @app.post("/upload-pdf")
 def create_upload_file(file: UploadFile = File(...)):
+    start = time.time()
     if file.headers["content-type"] != "application/pdf":
         return {"file": file,
                 "error": "not a pdf"}
@@ -81,7 +82,9 @@ def create_upload_file(file: UploadFile = File(...)):
                     "error": "Error with the file: {}".format(e)}
         finally: 
             file.file.close()
+    elapsed = round(time.time() - start, 3)
     return {"path": path,
-            "file": file.filename} | res
+            "file": file.filename,
+            "info": "took: %.2fs" % elapsed} | res
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
