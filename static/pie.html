@@ -5,37 +5,68 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/pico.min.css">
-    <style>
-        .chart-container { 
-            width: 50%; 
-            height: 380px; 
-            margin: 0 auto;
-            padding-top: 50px;
-        }
-        
-        .pie-chart-container {
-        height: 360px;
-        width: 360px;
-        float: left;
-        }
-    </style>
+    <link rel="stylesheet" href="pie.css">
+    <script>
+    </script>
 </head>
-<body>
-    <div class="chart-container">
-        <center>
-            <h1>{{ name }}</h1>
-            <p>Thickness: {%if (deepness2 - deepness1) == 0 %} Not given {% else %} {{ deepness2 - deepness1}}m {% endif %}</p>
-            <!-- <p>Latitude: {{ latitude }}</p>
-            <p>Longitude: {{ longitude }}</p>
-            <p>Description: {{ description }}</p> -->
-            <div>
-                <canvas id="pie-chart-container"></canvas>
+<body id="{{name}}">
+    <div id="main">
+        <div class="chart-container">
+            <center>
+                <h1>{{ name }}</h1>
+                <p>Thickness: {%if (deepness2 - deepness1) == 0 %} Not given {% else %} {{ deepness2 - deepness1}}m {% endif %}</p>
+                <!-- <p>Latitude: {{ latitude }}</p>
+                <p>Longitude: {{ longitude }}</p>
+                <p>Description: {{ description }}</p> -->
+                <div>
+                    <canvas id="pie-chart-container"></canvas>
+                </div>
+            </center>
+        </div>
+        <div id="images">
+            <div id="patterns">
+                <h4>Patterns</h4>
+                <div id="pattern-images">
+                </div>
             </div>
-        </center>
+            <div id="log">
+                <h4>lithology column</h4>
+                <div id="log-image" class="image">
+                </div>
+            </div>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.0.1/dist/chart.umd.min.js"></script>
-
     <script>
+        async function getPatterns(){
+            let res = await fetch("/get-patterns", {method: "GET"});
+            let json = await res.json();
+            let files = json["files"];
+            for (var f in files) {
+                let img = createElement("img", {"src":files[f]});
+                document.getElementById("pattern-images").appendChild(img);
+            }
+        }
+        function createElement(type, attributes) {
+			var element = document.createElement(type);
+			for (var key in attributes) {
+				if (key == "class") {
+						element.classList.add.apply(element.classList, attributes[key]); // add all classes at once
+				} else {
+					element[key] = attributes[key];
+				}
+			}
+            return element;
+		}
+        getPatterns();
+        let pdf = document.getElementsByTagName("body")[0].id;
+        let log_image = "/images/log.jpg";
+        let cluster = "/images/cluster.jpg";
+        img = createElement("img", {"src":log_image});
+        document.getElementById("log-image").appendChild(img);
+        img = createElement("img", {"src":cluster});
+        document.getElementById("log-image").appendChild(img);
+
         new Chart(document.getElementById("pie-chart-container"), {
             type : 'pie',
             data : {

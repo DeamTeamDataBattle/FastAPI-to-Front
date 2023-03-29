@@ -1,0 +1,49 @@
+#main {
+    width: 90vw;
+    height: auto;
+    max-height: 100vw;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    position:relative;
+}
+
+.chart-container{
+    padding: 20px;
+    width: 50%;
+}
+
+#images{
+    width: 50%;
+    height: auto;
+	display: grid; 
+	grid-template-columns: 1fr 1fr; 
+	grid-template-rows: 1fr 4fr; 
+	gap: 0px 0px; 
+    padding: 20px;
+}
+
+#patterns{
+    grid-column: 1 / span 2;
+    grid-row: 1;
+}
+
+#log{
+    grid-column: 1 / span 2;
+    grid-row: 2 ;
+}
+#cluster{
+}
+
+.image{
+    display: flex;
+    flex-direction: row;
+    /* justify-content: center; */
+    max-height: 50vh;
+    overflow: auto;
+}
+
+.image img {
+    width: 10%;
+    margin: auto;
+}

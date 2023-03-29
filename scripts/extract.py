@@ -76,13 +76,16 @@ def get_legends(legend_folder):
     return (legend_shape,legends,legends_name)
 
 #PLOT
-def plot_res_cluster(k_clusters,clusters):
+def plot_res_cluster(k_clusters,clusters,path):
+    path = path[:-13]+"cluster.png"
+    print("cluster image")
+    print(path)
     colors = []
     for i in range(k_clusters):
         colors.append(random.randint(0,255))
 
     img_save = []
-    width_img_save = 61
+    width_img_save = 100
     for i in range(len(clusters)):
         img_save.append([])
         for j in range(width_img_save):
@@ -91,7 +94,7 @@ def plot_res_cluster(k_clusters,clusters):
     array = np.array(img_save, dtype=np.uint8)
 
     new_image = Image.fromarray(array)
-    new_image.save('new.png')
+    new_image.save(path)
 
 
 def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
@@ -130,7 +133,7 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     
     clusters = k_m.predict(log_df)
     
-    plot_res_cluster(len(legends_lst),clusters)
+    plot_res_cluster(len(legends_lst),clusters,PATH_LOG)
     
     cl = list(clusters)
     
