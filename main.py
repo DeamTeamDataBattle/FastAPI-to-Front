@@ -34,26 +34,40 @@ async def http_exception_handler(request, exc):
 @app.get("/pie")
 async def pie(
         request: Request,
-        name : str = "Well",
-        deepness1 : float = 0,
-        deepness2 : float = 0,
-        sandstone: float = 0,
-        clay: float = 0,
-        latitude: str = "Not available in this document",
-        longitude: str = "Not available in this document",
-        description: Union[str, None] = None
+        pdf: str = ""
     ):
+    if pdf == "":
+        # pdf not set redirecting
+        return RedirectResponse(url="/")
+    pdf_path = "data/pdfs/" + pdf
+    if not check_if_already_processed(pdf_path):
+        # hasn't run
+        return RedirectResponse(url="/")
+
+    data = get_res(pdf_path)
+    
+    keys = ["sand", "clay", "lime", "shale", "salt", "silt", "chert"]
+    values = [0 for i in range(len(keys))]
+    comp = data["data"]
+    total = 0
+    # iterate over keys and compute values
+    for key in comp:
+        for i in range(len(keys)):
+            if keys[i] in key:
+                values[i] += comp[key]
+                total += comp[key]
+
 
     return templates.TemplateResponse("pie.html", {
             "request": request,
-            "name": name,
-            "deepness1": deepness1,
-            "deepness2": deepness2,
-            "sandstone": sandstone,
-            "clay":clay,
-            "latitude": latitude,
-            "longitude": longitude,
-            "description": description
+            "name": data["name"] if "name" in data else "null",
+            "deepness1": data["ty1"] if "ty1" in data else 0,
+            "deepness2": data["ty2"] if "ty2" in data else 0,
+            "sand": round(100*values[0]/total, 2),
+            "clay": round(100*values[1]/total, 2),
+            "latitude": data["lat"] if "lat" in data else "null",
+            "longitude": data["lon"] if "lon" in data else "null",
+            "description": data["desc"] if "desc" in data else "null",
         })
 
 @app.get("/notif")

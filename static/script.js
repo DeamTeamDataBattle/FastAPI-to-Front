@@ -21,9 +21,9 @@ function reset_upload() {
   let pdf = document.getElementById("pdf-upload").files[0];
   console.log(pdf);
   let size = Math.round(pdf["size"]/1e4)/100;
-  let est_time = Math.round(size * 100 / 7.75) / 100;
+  //let est_time = Math.round(size * 100 / 7.75) / 100;
   //toggle_hide("upload-info");
-  document.getElementById("upload-info").innerText = "Doc size: " + size + "MB\nEstimate time: " + est_time + "s";
+  document.getElementById("upload-info").innerText = "Doc size: " + size + "MB";
 }
 
 async function get_notifications() {
@@ -34,21 +34,7 @@ async function get_notifications() {
 }
 
 function gotopie(data) {
-  keys = ["sand", "clay", "lime", "shale", "salt", "silt", "chert"];
-  values = Array(keys.length).fill(0);
-  let total = 0;
-  comp = data["data"];
-  for (var key in comp){
-    for (let i=0; i<keys.length; i++){
-      if (key.includes(keys[i])){
-        values[i] += comp[key];
-        total += comp[key];
-      }
-    }
-  }
-  let sand = Math.round(100*values[0]/total);
-  let clay = Math.round(100*values[1]/total)
-  window.location.href = "/pie?name="+data["file"]+"&sandstone="+sand+"&clay="+clay;
+  window.location.href = "/pie?pdf="+data["pdf"];
 }
 
 async function upload_pdf() {

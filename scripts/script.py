@@ -252,9 +252,6 @@ def process(pdf_path):
                 if value == 1:
                     log_coords.append([xmin, ymin, xmax, ymax])
                     #crop_large.save(dir_path+"/%d_%s_log.jpg" % (i, key))
-                if value == 0:
-                    print("legend found", i)
-                    #crop_large.save(dir_path+"/%d_legend.jpg" % i)
 
     write_notif("straightening log")
     log_path = separate_log(log_coords, img, dir_path+"/log_{}.jpg")
@@ -264,4 +261,5 @@ def process(pdf_path):
     #tf_out = finale(log_path)
     write_notif("end")
     return {"info": "finished :D",
-            "data": out}
+            "data": out,
+            "pdf": pdf_path[10:]}
