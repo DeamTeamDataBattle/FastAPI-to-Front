@@ -43,7 +43,7 @@
             let json = await res.json();
             let files = json["files"];
             for (var f in files) {
-                let img = createElement("img", {"src":files[f]});
+                let img = createElement("img", {"src":files[f],"title":files[f].substring(24, files[f].length-4)});
                 document.getElementById("pattern-images").appendChild(img);
             }
         }
