@@ -4,13 +4,12 @@ from scripts.get_log_page import get_log_image
 from scripts.extract import cluster_log
 #from tyFinder.decoupageImage import finale
 
-def write_notif(notif, write=True):
+def write_notif(notif, percent=50, write=True):
     if not write:
-        text = open("data/notification.txt", "r").read()
+        text = json.load(open("data/notification.json", "r"))["notif"];
     else:
         text = ""
-    with open("data/notification.txt", "w") as f:
-        f.write(text+notif)
+    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
 
 LABELS = ["legend", "log", "pattern"]
 
@@ -63,10 +62,14 @@ def separate_pattern(img, path):
             x,y,w,h = box
             s = 5
             box_img = image[y+s:y+h-s, x+s:x+w-s]
-            for name in important_names:
-                if name in text:
-                    cv2.imwrite(path.format("legend_"+name), box_img)
-                    break
+            if important_names:
+                for name in important_names:
+                    if name in text:
+                        cv2.imwrite(path.format("legend_"+name), box_img)
+                        break
+            else:
+                cv2.imwrite(path.format("legend_"+name), box_img)
+
 
 # log extration
 # the aim is to find the log colon and straighten it
@@ -202,7 +205,7 @@ def process(pdf_path):
     # import model from trained weights
     model = torch.hub.load('ultralytics/yolov5', 'custom', path='scripts/weights.pt')
     print('model loaded')
-    write_notif("model loaded")
+    write_notif("model loaded", 5)
 
     dir_path = os.path.join("data/images/",pdf_path[10:-4])
     pattern_dir = os.path.join(dir_path,"patterns")
@@ -218,7 +221,7 @@ def process(pdf_path):
 
     log_image = get_log_image(pdf_path, dpi=200, save=False)
     cv2.imwrite(dir_path+"/log_large.jpg", log_image)
-    write_notif("log page found")
+    write_notif("log page found", 15)
 
     # NN trained on img 320
     img = Image.fromarray(log_image)
@@ -231,7 +234,7 @@ def process(pdf_path):
     i = 0
     log_coords = []
     while True:
-        write_notif("scanning log page %d" % i)
+        write_notif("scanning log page %d" % i, 25)
         end = False
         if (i+1)*img_size > H:
             height = H
@@ -249,7 +252,7 @@ def process(pdf_path):
             i += 1
         else:
             break
-        write_notif("\nscan with model", write=False)
+        write_notif("\nscan with model", 25, write=False)
         results = model(cropped_small)
         res = json.loads(results.pandas().xyxy[0].to_json())
         if res["name"]:
@@ -270,13 +273,13 @@ def process(pdf_path):
                     log_coords.append([xmin, ymin, xmax, ymax])
                     #crop_large.save(dir_path+"/%d_%s_log.jpg" % (i, key))
 
-    write_notif("straightening log")
+    write_notif("straightening log", 40)
     log_path = separate_log(log_coords, img, dir_path+"/log_{}.jpg")
-    write_notif("clustering log")
+    write_notif("clustering log", 50)
     out = cluster_log(log_path, pattern_dir+"/")
-    write_notif("ty placement")
+    write_notif("ty placement", 90)
     #tf_out = finale(log_path)
-    write_notif("end")
+    write_notif("end", 100)
     return {"info": "finished :D",
             "data": out,
             "pdf": pdf_path[10:]}

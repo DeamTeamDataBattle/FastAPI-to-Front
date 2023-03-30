@@ -30,6 +30,8 @@ async function get_notifications() {
   let res = await fetch("/notif", {method: "GET"});
   res = await res.json();
   let notif_text = res["notif"];
+  let progress = res["percent"];
+  update_progress("upload-progress-bar", progress);
   document.getElementById("upload-info").innerText = notif_text;
 }
 
@@ -42,8 +44,7 @@ async function upload_pdf() {
   if (typeof pdf === 'undefined') {
     alert("please select a document first");
   } else {
-    //toggle_hide("upload-progress-bar");
-    //update_progress("upload-progress-bar", 0);
+    toggle_hide("upload-progress-bar");
 
     // send request
     let body = new FormData();
@@ -54,7 +55,7 @@ async function upload_pdf() {
     let data = await res.json().then(clearInterval(notifID));
     console.log(data);
     // update page with html
-    //update_progress("upload-progress-bar", 100);
+    update_progress("upload-progress-bar", 100);
     if ("error" in data) {
       toggle_hide("upload-error");
       document.getElementById("upload-error").innerText = data["error"];

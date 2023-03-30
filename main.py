@@ -1,4 +1,4 @@
-import os, sys, time
+import os, sys, time, json
 from enum import Enum
 from typing import Union
 
@@ -48,35 +48,33 @@ async def pie(
     data = get_res(pdf_path)
     
     keys = ["sand", "clay", "lime", "shale", "salt", "silt", "chert"]
-    values = [0 for i in range(len(keys))]
     comp = data["data"]
-    total = 0
-    # iterate over keys and compute values
-    for key in comp:
-        for i in range(len(keys)):
-            if keys[i] in key:
-                values[i] += comp[key]
-                total += comp[key]
-
+    total = comp.pop("total")
+    values = [round(100*v/total, 2) for v in list(comp.values())]
 
     return templates.TemplateResponse("pie.html", {
             "request": request,
             "name": data["pdf"] if "pdf" in data else "null",
             "deepness1": data["ty1"] if "ty1" in data else 0,
             "deepness2": data["ty2"] if "ty2" in data else 0,
-            "sand": round(100*values[0]/total, 2),
-            "clay": round(100*values[1]/total, 2),
             "latitude": data["lat"] if "lat" in data else "null",
             "longitude": data["lon"] if "lon" in data else "null", "description": data["desc"] if "desc" in data else "null",
+            "pi_data": values,
+            "pi_labels": ';'.join(list(comp.keys()))
         })
 
 @app.get("/notif")
 def get_notif():
-    return {"notif": open("data/notification.txt", 'r').read()}
+    return json.load(open("data/notification.json", "r"))
 
 @app.get("/get-patterns")
 def fetch_patterns():
     return get_patterns()
+
+@app.get("/get-pdfs")
+def getPdfs():
+    files = [json.load(open("data/json/"+f))["pdf"] for f in os.listdir("data/json/")]
+    return {"files":files}
 
 @app.post("/upload-pdf")
 def create_upload_file(file: UploadFile = File(...)):

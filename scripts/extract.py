@@ -1,9 +1,16 @@
 from sklearn.cluster import KMeans
-import cv2,os
+import cv2,os,json
 import numpy as np
 import pandas as pd
 from PIL import Image
 import random
+
+def write_notif(notif, percent=50, write=True):
+    if not write:
+        text = json.load(open("data/notification.json", "r"))["notif"];
+    else:
+        text = ""
+    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
 
 
 def get_img(filepath):
@@ -36,6 +43,7 @@ def process_img2(img,width,height,debug=0):
     return img_df
 
 def k_means(img_df,K_clusters):
+    print("clustering")
     k_m = KMeans(n_clusters=K_clusters) 
 
     k_m.fit(img_df) 
@@ -100,12 +108,15 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     log_img = get_img(PATH_LOG)
     H,W,D = log_img.shape
     
+    write_notif("fetching legends", 55)
     (legend_shape,legends,legends_name) = get_legends(PATH_LEGEND_FOLDER)
     
-    k_clusters = len(legends)+2
+    k_clusters = len(legends)+3
     
+    write_notif("preprocessing", 60)
     log_pre = preprocess_img(log_img,(legend_shape[1],log_img.shape[:2][0]))
     
+    write_notif("process", 60)
     log_df = process_img2(log_pre, legend_shape[1], legend_shape[0])
     
     legends_lst = []
@@ -114,6 +125,7 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     
     #COMPUTE
     #Train on legends, predict on log BEST RESULTS
+    write_notif("training",65)
     
     frame = pd.concat([leg_df for (leg_df,name) in legends_lst])
     
@@ -124,14 +136,17 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     print(log_df.shape)
     
     #k_clusters = len(legends_lst) -> because n_sample should be >= n_clusters
+    write_notif("cluster", 70)
     (clusters,k_m) = k_means(frame,len(legends_lst))
     
     cluster_and_legend = [x for x in zip(clusters,[name[7:-4] for _,name in legends_lst if len(name) > 11])]
     
     print(cluster_and_legend)
     
+    write_notif("clustering", 75)
     clusters = k_m.predict(log_df)
     
+    write_notif("saving cluster", 80)
     plot_res_cluster(len(legends_lst),clusters,PATH_LOG,W)
     
     cl = list(clusters)

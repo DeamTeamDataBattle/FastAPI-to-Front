@@ -8,12 +8,38 @@
 </head>
 <body>
     <div class="container">
-    	<input onchange="reset_upload()" type="file" id="pdf-upload" name="pdf" accept="application/pdf">
-    	<button  onclick="upload_pdf()">Process</button>
-        <progress max="100" class="hidden" id="upload-progress-bar"></progress>
-        <p id="upload-info" class="secondary"></p>
-    	<p class="error hidden" id="upload-error">this is an error</p>
+        <a href="/"><h1>Data Battle</h1></a>
+    </div>
+    <div class="grid center container">
+        <div>
+        	<input onchange="reset_upload()" type="file" id="pdf-upload" name="pdf" accept="application/pdf">
+        	<button  onclick="upload_pdf()">Process</button>
+            <progress max="100" class="hidden" id="upload-progress-bar"></progress>
+            <p id="upload-info" class="secondary"></p>
+        	<p class="error hidden" id="upload-error">this is an error</p>
+        </div>
+        <div id="pdfs">
+            <h3>Processed pdfs</h3>
+        </div>
     </div>
 </body>
+<script>
+    async function getPdfs() {
+        let res = await fetch("/get-pdfs");
+        let files = await res.json();
+        files = files["files"];
+        let div = document.getElementById("pdfs");
+        for (var f in files){
+            let h = document.createElement("h5");
+            let file = files[f];
+            h.innerText = file;
+            let a = document.createElement("a");
+            a.setAttribute("href", "/pie?pdf="+file);
+            a.appendChild(h);
+            div.appendChild(a);
+        }
+    }
+    getPdfs();
+</script>
 <script src="script.js"></script>
 </html>

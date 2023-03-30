@@ -10,6 +10,9 @@
     </script>
 </head>
 <body id="{{name}}">
+    <div class="container">
+        <a href="/"><h1 style="margin:0">Data Battle</h1></a>
+    </div>
     <div id="main">
         <div class="chart-container">
             <center>
@@ -70,19 +73,28 @@
         new Chart(document.getElementById("pie-chart-container"), {
             type : 'pie',
             data : {
-                labels : [ "Sandstone", "Clay", "Other"],
+                labels : "{{ pi_labels }}".split(";"),
                 datasets : [ {
-                    backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#716A7A" ],
-                    data : [ {{ sand }}, {{ clay }}, 100 - {{ sandstone }} - {{ clay }} ]
+                    //backgroundColor : [ "#FCDDB0" , "#FF9D76" , "#716A7A" ],
+                    data : {{ pi_data }}
                 } ]
             },
             options : {
                 title : {
                     display : true,
                     text : 'Chart JS Pie Chart Example'
+                },
+                plugins: {	
+                    legend: {
+                        labels: {
+                            color: "#ededed",
+                            font: {
+                                size: 18
+                            }
+                        }
+                    }
                 }
             }
-            
         });
     </script>
 </body>

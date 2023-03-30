@@ -1,14 +1,13 @@
 #!/bin/python3
-import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib
+import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib, json
 from PIL import Image
 
-def write_notif(notif, write=True):
+def write_notif(notif, percent=50, write=True):
     if not write:
-        text = open("data/notification.txt", "r").read()
+        text = json.load(open("data/notification.json", "r"))["notif"];
     else:
         text = ""
-    with open("data/notification.txt", "w") as f:
-        f.write(text+notif)
+    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
 
 DEBUG = False
 
@@ -98,28 +97,28 @@ def split_and_save(save_path, image, img_size):
 
 def get_log_image(path, dpi=150, save=True):
     print("Reading pdf %s" % path)
-    write_notif("scanning pdf for log page\n")
+    write_notif("scanning pdf for log page\n",10)
     start = time.time()
     save_path = os.path.join(os.path.curdir,"data/images/{0}_"+path[10:-4]+".jpg")
     pdf = open_pdf(path)
     log_page = find_log_page_in_summary(pdf)
     if not log_page:
         print("not in summary checking longest")
-        write_notif("not in summary checking longest\n", write=False)
+        write_notif("not in summary checking longest\n", 11, write=False)
         log_page = get_longest_page_index(pdf)
         log_image = convert_page_to_image(pdf, log_page, dpi=dpi)
         if not verify_log_page(log_image):
             print("not longest checking all")
-            write_notif("not longest checking all\n", write=False)
+            write_notif("not longest checking all\n", 12, write=False)
             log_image, log_page = find_log_page(pdf, dpi=150, debug=DEBUG)
             if len(log_image) == 0:
-                write_notif("log page not found")
+                write_notif("log page not found", 100)
                 raise Exception("log not found")
     else:
         print("found in summary")
-        write_notif("found in summary\n", write=False)
+        write_notif("found in summary\n",13, write=False)
     print("found page: %d" % log_page)
-    write_notif("found log page: %d" % log_page, write=False)
+    write_notif("found log page: %d" % log_page, 14, write=False)
     log_image = convert_page_to_image(pdf, log_page, dpi=dpi)
 
     if save:
