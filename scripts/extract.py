@@ -87,11 +87,21 @@ def get_legends(legend_folder, scl):
     return (legend_shape,legends,legends_name)
 
 #PLOT
-def plot_res_cluster(k_clusters,clusters,path,w):
+def plot_res_cluster(cluster_and_legend,clusters,path,w):
     path = path[:-13]+"cluster.png"
+    #               sand        clay / shale    other
+    colors_raw = [(204,204,0),(128,128,128),(255,128,0)]
+
     colors = []
-    for i in range(k_clusters):
-        colors.append(random.randint(0,255))
+    for i in range(len(cluster_and_legend)):
+        colors.append((0,0,0))
+    for cluster_id,label in cluster_and_legend:
+        if "sand" in label:
+            colors[cluster_id] = colors_raw[0]
+        elif "clay" in label or "shale" in label:
+            colors[cluster_id] = colors_raw[1]
+        else:
+            colors[cluster_id] = colors_raw[2]
 
     img_save = []
     width_img_save = w
@@ -153,7 +163,7 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     clusters = k_m.predict(log_df)
     
     write_notif("saving cluster", 80)
-    plot_res_cluster(len(legends_lst),clusters,PATH_LOG,W)
+    plot_res_cluster(cluster_and_legend,clusters,PATH_LOG,W)
     
     cl = list(clusters)
     
