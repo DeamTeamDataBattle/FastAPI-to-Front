@@ -1,0 +1,16 @@
+numpy
+torch
+torchvision
+opencv-python
+matplotlib
+pytesseract
+scikit-learn
+scikit-image
+sklearn-model
+sklearn
+utils
+fastapi
+pypdfium2
+asyncio
+python-multipart
+ultralytics
