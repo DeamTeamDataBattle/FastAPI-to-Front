@@ -43,6 +43,11 @@
     overflow: auto;
 }
 
+#log-image img {
+    width: 75px;
+    height: auto;
+}
+
 .image img {
     width: 10%;
     margin: auto;
