@@ -7,7 +7,6 @@ from scripts.functions import write_notif, LOG_COLUMN_WIDTH
 #from tyFinder.decoupageImage import finale
 
 LABELS = ["legend", "log", "pattern"]
-IMPORTANT_NAMES = ["clay", "sand", "silt", "shale", "chalk", "lime", "chert", "marl"]
 
 def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
@@ -41,7 +40,7 @@ def extract_patterns(image, path):
     img = cv2.GaussianBlur(img, (3, 3), 0)
 
     img = cv2.threshold(img, 200, 200, cv2.THRESH_BINARY_INV)[1]
-    img = cv2.dilate(img, np.ones((1, 5)))
+    img = cv2.dilate(img, np.ones((1, 3)))
     #img = cv2.GaussianBlur(img, (2, 2), 0)
     contours, hierachy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -49,27 +48,30 @@ def extract_patterns(image, path):
     for c in contours:
         x,y,w,h = cv2.boundingRect(c)
         #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(255,0,0), thickness=1)
-        if 1.9 < w / h < 2.7 and h > 40:
+        if 1.3 < w / h < 2.7 and h > 40:
             boxes.append([x,y,w,h])
             #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(0,0,255), thickness=2)
+    
+    #cv2.imwrite(path.format("con"), image)
+    #cv2.imwrite(path.format("mod"), img)
+    #cv2.imwrite(path.format("text"), image_text)
     textes = []
     s = 5
-    for c in contours:
-        x,y,w,h = cv2.boundingRect(c)
-        for bx, by, bw, bh in boxes:
+    for bx, by, bw, bh in boxes:
+        names = []
+        crop_img = image[min(by+s,H):max(by+bh-s,0),min(bx+s,W):max(bx+bw-s,0)]
+        for c in contours:
+            x,y,w,h = cv2.boundingRect(c)
             if by < y < by+bh and bx < x < bx+bw*2:
-                crop_text = image_text[y-s:y+h+s,x-s:x+w+s]
-                crop_img = image[by+s:by+bh-s,bx+s:bx+bw-s]
+                crop_text = image_text[max(y-s,0):min(y+h+s,H),max(x-s,0):min(x+w+s,W)]
                 text = pytesseract.image_to_string(crop_text)
-                words = [c for c in text.lower().split("\n") if len(c) > 3]
+                words = [c for c in text.lower().split("\n") if len(c) > 1]
                 if words:
-                    word = ''.join([s for s in words[0].split(" ") if len(s) > 3])
-                    text = ''.join([s for s in filter(str.isalpha, word)])
-                    for name in IMPORTANT_NAMES:
-                        if name in text:
-                            cv2.imwrite(path.format(text),crop_img)
-                    else:
-                        cv2.imwrite(path.format(text), crop_img)
+                    word = ''.join([s for s in words[0].split(" ") if len(s) > 1])
+                    names.append(''.join([s for s in filter(str.isalpha, word)]))
+        if names:
+            name = max(names, key=len)
+            cv2.imwrite(path.format("legend_"+name), crop_img)
 
 def find_log_legend(image, dir_path, pattern_dir):
     image = np.array(image)
@@ -95,72 +97,13 @@ def find_log_legend(image, dir_path, pattern_dir):
     for img in imgs:
         if check_legend(img, dir_path):
             #cv2.imwrite(path.format("legend"), img)
-            extract_patterns(img, pattern_dir+"/legend_{}.jpg")
+            extract_patterns(img, pattern_dir+"/{}.jpg")
         else:
             H,W,D = img.shape
             log_img = cv2.resize(img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
             cv2.imwrite(dir_path+"/log_image.jpg", log_img)
     
     return dir_path+"/log_image.jpg"
-
-# given a small image of pattern + name 
-# extract the pattern and name
-# saves to pattern/ dir
-def extract_pattern_from_image(img, path):
-    # only keep patterns with these names
-    image = np.array(img)
-    H,W,D = image.shape
-
-    image_text = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    image_text = cv2.threshold(image_text, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    image_text = cv2.bitwise_not(image_text)
-    kernel = np.ones((2, 1), np.uint8)
-    #image_text = cv2.erode(image_text, kernel, iterations=1)
-    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]]) * 3
-    image_text = cv2.filter2D(image_text, -1, kernel)
-    kernel = np.ones((1, 1), np.uint8)
-    image_text = cv2.erode(image_text, kernel, iterations=1)
-
-    img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    img = cv2.GaussianBlur(img, (3, 3), 0)
-
-    img = cv2.threshold(img, 200, 200, cv2.THRESH_BINARY_INV)[1]
-    img = cv2.dilate(img, np.ones((1, 3)))
-    #img = cv2.GaussianBlur(img, (2, 2), 0)
-    contours, hierachy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    box = []
-    for c in contours:
-        x,y,w,h = cv2.boundingRect(c)
-        #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(255,0,0), thickness=1)
-        if h > 0.5 * H and w < 0.7 * W:
-            box = [x,y,w,h]
-            break
-            #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(0,0,255), thickness=1)
-        elif w > 0.2 * W:
-            text = [x,y,w,h]
-        #all_text += [''.join(filter(str.isalpha, s)) for s in pytesseract.image_to_string(crop_img).lower().replace("\n", "").split(" ") if len(s) > 4]
-
-    #cv2.imwrite(path.format(""), image)
-    #cv2.imwrite(path.format("con"), image)
-    #cv2.imwrite(path.format("mod"), img)
-    #cv2.imwrite(path.format("text_"+text), image_text)
-    if box:
-        text = pytesseract.image_to_string(image_text)
-        words = [c for c in text.lower().split("\n") if len(c) > 3]
-        if words:
-            word = ''.join([s for s in words[0].split(" ") if len(s) > 3])
-            text = ''.join([s for s in filter(str.isalpha, word)])
-            x,y,w,h = box
-            s = 5
-            box_img = image[y+s:y+h-s, x+s:x+w-s]
-            if IMPORTANT_NAMES:
-                for name in IMPORTANT_NAMES:
-                    if name in text:
-                        cv2.imwrite(path.format("legend_"+name), box_img)
-                        break
-            else:
-                cv2.imwrite(path.format("legend_"+name), box_img)
 
 # log extration
 # the aim is to find the log colon and straighten it
@@ -336,10 +279,12 @@ def run_model_on_image(img, model, pattern_dir):
         res = json.loads(results.pandas().xyxy[0].to_json())
         # process results 
         if res["name"]:
+            j = 0
             for key, value in res["class"].items():
                 if value == 2:
                     pattern = extract_image_from_res(cropped_large, res, key, width_scl, height_scl)
-                    extract_pattern_from_image(pattern, pattern_dir+"/{}.jpg")
+                    #cv2.imwrite(pattern_dir+"/%s_%d.jpg" % (key, i), pattern)
+                    extract_patterns(np.array(pattern), pattern_dir+"/{}.jpg")
                 if value == 1:
                     xmin = int(res["xmin"][key])
                     ymin = int(res["ymin"][key])
@@ -348,6 +293,7 @@ def run_model_on_image(img, model, pattern_dir):
                     xmin, ymin = map_coords(xmin, ymin, width_scl, height_scl)
                     xmax, ymax = map_coords(xmax, ymax, width_scl, height_scl)
                     log_coords.append([xmin, ymin, xmax, ymax])
+                j += 1
     return log_coords
 
 """

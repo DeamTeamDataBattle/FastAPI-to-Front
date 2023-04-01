@@ -18,7 +18,7 @@ start = time.time()
 # 4 = good results
 # 1.6 lowest
 # 2 quick
-scl = 3
+scl = 4
 
 SHAPE = [int(LOG_COLUMN_SAVE_HEIGHT*scl), int(LOG_COLUMN_SAVE_WIDTH*scl), 3]
 
@@ -52,10 +52,11 @@ def resize_image_width(img, width, height=None):
 def cluster_log(dir_path, pattern_dir) :
     log_file = dir_path+"/log_image.jpg"
     patterns = [f for f in os.listdir(pattern_dir) if "legend" in f]
+    if len(patterns) == 0:
+        raise Exception("No Patterns detected")
     log_img = resize_image_width(cv2.imread(log_file), LOG_COLUMN_SAVE_WIDTH)
     #cv2.imwrite(dir_path+"/resize.jpg", log_img)
     log_h, log_w, d = log_img.shape
-    print(patterns)
     pattern_imgs_orig = [resize_image_width(cv2.imread(os.path.join(pattern_dir, f)), LOG_COLUMN_SAVE_WIDTH) for f in patterns]
     pattern_height = max(i.shape[0] for i in pattern_imgs_orig)
     pattern_imgs = [resize_image_width(cv2.imread(os.path.join(pattern_dir, f)), LOG_COLUMN_SAVE_WIDTH, height=pattern_height) for f in patterns]
@@ -77,7 +78,8 @@ def cluster_log(dir_path, pattern_dir) :
         dists = np.take_along_axis(dists, ids, axis=0)
         dists = dists/np.sum(dists)
         #img = cv2.addWeighted(pattern_imgs[ids[0]], dists[0], pattern_imgs[ids[1]], dists[1], 0)
-        img = pattern_imgs_orig[ids[0]]
+        #img = pattern_imgs_orig[ids[0]]
+        img = pattern_imgs[ids[0]]
         reconstructed = cv2.vconcat((reconstructed, img))
         comp.append(ids[0])
     cv2.imwrite(dir_path+"/cluster.jpg", reconstructed)
