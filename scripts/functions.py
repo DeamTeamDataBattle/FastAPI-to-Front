@@ -6,6 +6,7 @@ mainly for the main.py
 """
 
 LOG_COLUMN_SAVE_WIDTH = 60
+LOG_COLUMN_SAVE_HEIGHT = 20
 LOG_COLUMN_WIDTH = 420
 
 def write_notif(notif, percent=50, write=True):
@@ -40,7 +41,7 @@ def mv_images(pdf_path):
         os.remove(f)
     # copy log image
     shutil.copyfile(image_dir+"/log_image.jpg", assets_dir+"/log.jpg")
-    shutil.copyfile(image_dir+"/cluster.png", assets_dir+"/cluster.jpg")
+    shutil.copyfile(image_dir+"/cluster.jpg", assets_dir+"/cluster.jpg")
     files = [f for f in os.listdir(pattern_dir)]
     for f in files:
         shutil.copyfile(os.path.join(pattern_dir, f), assets_dir+"/patterns/"+f)

@@ -1,4 +1,5 @@
 import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib, torch, json
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from PIL import Image
 from scripts.get_log_page import get_log_image
 from scripts.extract import cluster_log
@@ -387,7 +388,7 @@ def process_pdf(pdf_path):
         log_path = separate_log(log_coords, log_image, dir_path+"/log_{}.jpg")
 
     write_notif("clustering log", 50)
-    out = cluster_log(log_path, pattern_dir+"/")
+    out = cluster_log(dir_path, pattern_dir)
 
     write_notif("ty placement", 90)
     #tf_out = finale(log_path)
