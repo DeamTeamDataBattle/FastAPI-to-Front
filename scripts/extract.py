@@ -4,14 +4,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import random
-
-def write_notif(notif, percent=50, write=True):
-    if not write:
-        text = json.load(open("data/notification.json", "r"))["notif"];
-    else:
-        text = ""
-    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
-
+from scripts.functions import write_notif, LOG_COLUMN_SAVE_WIDTH
 
 def get_img(filepath):
     return cv2.imread(filepath)
@@ -120,8 +113,7 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     #PREPROCESS
     log_img = get_img(PATH_LOG)
     H,W,D = log_img.shape
-    desired_w = 75
-    scl = desired_w/W
+    scl = LOG_COLUMN_SAVE_WIDTH/W
     log_img = cv2.resize(log_img, (int(scl*W), int(scl*H)))
     
     write_notif("fetching legends", 55)

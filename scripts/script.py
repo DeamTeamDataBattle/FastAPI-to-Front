@@ -2,21 +2,19 @@ import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.py
 from PIL import Image
 from scripts.get_log_page import get_log_image 
 from scripts.extract import cluster_log
+from scripts.functions import write_notif, LOG_COLUMN_WIDTH
 #from tyFinder.decoupageImage import finale
-
-def write_notif(notif, percent=50, write=True):
-    if not write:
-        text = json.load(open("data/notification.json", "r"))["notif"];
-    else:
-        text = ""
-    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
 
 LABELS = ["legend", "log", "pattern"]
 
 def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
 
-def separate_pattern(img, path):
+# given a small image of pattern + name 
+# extract the pattern and name
+# saves to pattern/ dir
+def extract_pattern_from_image(img, path):
+    # only keep patterns with these names
     important_names = ["clay", "sand", "silt", "shale", "chalk", "lime", "chert"]
     image = np.array(img)
     H,W,D = image.shape
@@ -70,34 +68,38 @@ def separate_pattern(img, path):
             else:
                 cv2.imwrite(path.format("legend_"+name), box_img)
 
-
 # log extration
 # the aim is to find the log colon and straighten it
 def separate_log(coords, image, path):
+    # img is PIL
+    # I really don't want to change this since it works okish
     img = np.array(image)
     H,W,D = img.shape
-    Xmin,Xmax,Ymin,Ymax = [],[],[],[]
+    # crop large log image to just where it found the log column
+    Xmin_arr,Xmax_arr,Ymin_arr,Ymax_arr = [],[],[],[]
     for xmin,ymin,xmax,ymax in coords:
-        Xmin.append(xmin)
-        Ymin.append(ymin)
-        Xmax.append(xmax)
-        Ymax.append(ymax)
+        Xmin_arr.append(xmin)
+        Ymin_arr.append(ymin)
+        Xmax_arr.append(xmax)
+        Ymax_arr.append(ymax)
 
-    X_min = int(sum(Xmin) / len(Xmin))  
-    #Y_min = int(sum(Ymin) / len(Ymin))
-    X_max = int(sum(Xmax) / len(Xmax))
-    #Y_max = int(sum(Ymax) / len(Ymax))
+    X_min = int(sum(Xmin_arr) / len(Xmin_arr))  
+    #Y_min = int(sum(Ymin_arr) / len(Ymin_arr))
+    X_max = int(sum(Xmax_arr) / len(Xmax_arr))
+    #Y_max = int(sum(Ymax_arr) / len(Ymax_arr))
     Y_min = 0
     Y_max = H
-
     w = (X_max-X_min)*2
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
-    N = H//(W//1)
+    # resize to 75px width
+    log_img = cv2.resize(log_img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
+    H, W, D = log_img.shape
+    N = H//W
     widths = []
     x_start = []
-    min_gap = W // 4
     points = []
+    # split into smaller images and extract
     for i in range(N):
         log_img_crop = log_img[i*H//N:min((i+1)*H//N, H)]
         img_h, img_w, img_d = log_img_crop.shape
@@ -181,104 +183,115 @@ def separate_log(coords, image, path):
         #cv2.imwrite(path.format(str(i)), log_img_crop)
         #cv2.imwrite(path.format(str(i)+"_mod"), log_img_crop_mod)
 
+    if len(widths) == 0 or len(points) == 0:
+        raise Exception("Log column not found")
+
     g = int(max(set(widths), key=widths.count))
-    if len(points) > 0:
-        x1, y1 = points[0]
-        img1 = log_img[y1:y1+W, x1:x1+g]
-        for i in range(1, len(points)):
-            x1, y1 = points[i]
-            img2 = log_img[y1:y1+W, x1:x1+g]
-            img1 = np.concatenate((img1, img2), axis=0)
-        cv2.imwrite(path.format("image"), img1)
-        return path.format("image")
-    else:
-        raise Exception("log image could not be located")
+    x1, y1 = points[0]
+    img1 = log_img[y1:y1+W, x1:x1+g]
+    for i in range(1, len(points)-1):
+        x1, y1 = points[i]
+        if x1+g >= W:
+            x1 = W - g
+        img2 = log_img[y1:y1+W, x1:x1+g]
+        img1 = np.concatenate((img1, img2), axis=0)
+    cv2.imwrite(path.format("image"), img1)
+    return path.format("image")
 
+def crop_image_square(img, i, w, h):
+    # cropped image is square so w is h
+    height = min((i+1)*w, h)
+    return img.crop((0, i*w, w, height)), h==height
 
+def extract_image_from_res(img, res, key, width_scl=0,height_scl=0):
+    xmin = int(res["xmin"][key])
+    ymin = int(res["ymin"][key])
+    xmax = int(res["xmax"][key])
+    ymax = int(res["ymax"][key])
+    if width_scl != 0 and height_scl != 0:
+        xmin, ymin = map_coords(xmin, ymin, width_scl, height_scl)
+        xmax, ymax = map_coords(xmax, ymax, width_scl, height_scl)
+    return img.crop((xmin, ymin, xmax, ymax))
 
-"""
-main script to run to get legend + patterns
-"""
-
-def process(pdf_path):
-
-    # import model from trained weights
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path='scripts/weights.pt')
-    print('model loaded')
-    write_notif("model loaded", 5)
-
-    dir_path = os.path.join("data/images/",pdf_path[10:-4])
-    pattern_dir = os.path.join(dir_path,"patterns")
-
-    print(dir_path)
-    print(pdf_path)
-
-    if not os.path.exists(dir_path):
-        os.mkdir(dir_path)
-
-    if not os.path.exists(pattern_dir):
-        os.mkdir(pattern_dir)
-
-    log_image = get_log_image(pdf_path, dpi=200, save=False)
-    cv2.imwrite(dir_path+"/log_large.jpg", log_image)
-    write_notif("log page found", 15)
-
-    # NN trained on img 320
-    img = Image.fromarray(log_image)
+def run_model_on_image(img, model, pattern_dir):
+    # img is PIL
+    # resize to 320
     img_size = 320
-    w,h = img.size
-    W,H = img_size, int(img_size/w*h)
-    width_scl = w / W
-    height_scl = h / H
-    resized_image = img.resize((W,H))
+    original_width,original_height = img.size
+    small_width,small_height = img_size, int(img_size/original_width*original_height)
+    width_scl = original_width / small_width
+    height_scl = original_height / small_height
+    resized_image = img.resize((small_width,small_height))
+    # loop over square crop of image and run the model
     i = 0
     log_coords = []
     while True:
         write_notif("scanning log page %d" % i, 25)
-        end = False
-        if (i+1)*img_size > H:
-            height = H
-            end = True
-        else:
-            height = (i+1)*img_size
-        cropped_small = resized_image.crop((0, i*img_size, W, height))
-        if (i+1)*w > h:
-            height = h
-            end = True
-        else:
-            height = (i+1)*w 
-        cropped_large = img.crop((0, i*w, w, height))
+        # crop image into small and large versions
+        cropped_small,end = crop_image_square(resized_image, i, small_width, small_height)
+        cropped_large,end = crop_image_square(img, i, original_width, original_height)
+        # if reached the end stop
         if not end:
             i += 1
         else:
             break
         write_notif("\nscan with model", 25, write=False)
+        # get model res
         results = model(cropped_small)
         res = json.loads(results.pandas().xyxy[0].to_json())
+        # process results 
         if res["name"]:
             for key, value in res["class"].items():
-                xmin = int(res["xmin"][key])
-                ymin = int(res["ymin"][key])
-                xmax = int(res["xmax"][key])
-                ymax = int(res["ymax"][key])
-                crop_small = cropped_small.crop((xmin, ymin, xmax, ymax))
-                #crop_small.save(dir_path+"/%s_%s_small.jpg" % (LABELS[value], key))
-                xmin, ymin = map_coords(xmin, ymin, width_scl, height_scl)
-                xmax, ymax = map_coords(xmax, ymax, width_scl, height_scl)
-                crop_large = cropped_large.crop((xmin, ymin, xmax, ymax))
-                #crop_large.save(dir_path+"/%s_%s_large.jpg" % (LABELS[value], key))
                 if value == 2:
-                    separate_pattern(crop_large, pattern_dir+"/{}.jpg")
+                    pattern = extract_image_from_res(cropped_large, res, key, width_scl, height_scl)
+                    extract_pattern_from_image(pattern, pattern_dir+"/{}.jpg")
                 if value == 1:
+                    xmin = int(res["xmin"][key])
+                    ymin = int(res["ymin"][key])
+                    xmax = int(res["xmax"][key])
+                    ymax = int(res["ymax"][key])
+                    xmin, ymin = map_coords(xmin, ymin, width_scl, height_scl)
+                    xmax, ymax = map_coords(xmax, ymax, width_scl, height_scl)
                     log_coords.append([xmin, ymin, xmax, ymax])
-                    #crop_large.save(dir_path+"/%d_%s_log.jpg" % (i, key))
+    return log_coords
+
+"""
+main script to run to get legend + patterns
+"""
+def process(pdf_path):
+    # import model from trained weights
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path='scripts/weights.pt')
+    write_notif("model loaded", 5)
+
+    # main path for saving images
+    dir_path = os.path.join("data/images/",pdf_path[10:-4])
+    pattern_dir = os.path.join(dir_path,"patterns")
+
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+    if not os.path.exists(pattern_dir):
+        os.mkdir(pattern_dir)
+
+    # extract log image
+    log_image = get_log_image(pdf_path, dpi=200, save=False)
+    log_image = Image.fromarray(log_image)
+    #cv2.imwrite(dir_path+"/log.jpg", log_image)
+    write_notif("log page found", 15)
+
+    # run model, also finds and saves patterns
+    # TODO could pass patterns in memory instead of writing and reading from disk
+    # returns coordinates of log for each image
+    log_coords = run_model_on_image(log_image, model, pattern_dir)
 
     write_notif("straightening log", 40)
-    log_path = separate_log(log_coords, img, dir_path+"/log_{}.jpg")
+    log_path = separate_log(log_coords, log_image, dir_path+"/log_{}.jpg")
+
     write_notif("clustering log", 50)
     out = cluster_log(log_path, pattern_dir+"/")
+
     write_notif("ty placement", 90)
     #tf_out = finale(log_path)
+
     write_notif("end", 100)
     return {"info": "finished :D",
             "data": out,

@@ -11,17 +11,7 @@ from pydantic import BaseModel
 
 # custom package
 from scripts.script import process
-from scripts.save import save_results, check_if_already_processed, get_res, mv_images, get_patterns
-
-# class Item(BaseModel):
-#     name : str
-#     deepness1 : float
-#     deepness2 : float
-#     sandstone : float
-#     clay : float
-#     latitude : str
-#     longitude : str
-#     description : Union[str, None] = None
+from scripts.functions import *
 
 app = FastAPI()
 templates = Jinja2Templates(directory="static")
@@ -78,6 +68,7 @@ def getPdfs():
 
 @app.post("/upload-pdf")
 def create_upload_file(file: UploadFile = File(...)):
+    write_notif("preparing", 0)
     start = time.time()
     if file.headers["content-type"] != "application/pdf":
         return {"file": file,

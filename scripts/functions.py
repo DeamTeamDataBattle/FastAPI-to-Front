@@ -1,4 +1,20 @@
 import os, sys, json, shutil
+"""
+this file contains functions that are used in multiple scripts
+mainly for the main.py
+
+"""
+
+LOG_COLUMN_SAVE_WIDTH = 60
+LOG_COLUMN_WIDTH = 420
+
+def write_notif(notif, percent=50, write=True):
+    if not write:
+        text = json.load(open("data/notification.json", "r"))["notif"];
+    else:
+        text = ""
+    print(text+notif)
+    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
 
 def check_if_already_processed(pdf_path):
     json_file = os.path.join("data/json/",pdf_path[10:-4]+".json")

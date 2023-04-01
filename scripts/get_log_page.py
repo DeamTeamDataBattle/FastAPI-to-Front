@@ -1,13 +1,11 @@
 #!/bin/python3
 import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib, json
 from PIL import Image
-
-def write_notif(notif, percent=50, write=True):
-    if not write:
-        text = json.load(open("data/notification.json", "r"))["notif"];
-    else:
-        text = ""
-    json.dump({"notif":text+notif, "percent":percent}, open("data/notification.json", 'w'))
+from scripts.functions import write_notif
+"""
+this file contains functions that take the whole pdf and 
+finds the log page.
+"""
 
 DEBUG = False
 
@@ -47,7 +45,7 @@ def search_image_text(image, key_words):
             FOUND = True
     return FOUND
 
-# TODO model that checks that it is the right page
+# model that checks that it is the right page
 def verify_log_page(img, debug=False):
     img = img[0:HEIGHT]
     text = pytesseract.image_to_string(img).lower().replace("\n", "").split(" ")
@@ -71,7 +69,6 @@ def find_log_page(pdf, dpi=150, debug=False):
     page_indices = [n_pages-i-1 for i in range(n_pages)]  # all pages
     key_words = ["LOG", "COMPOSITE", "COMPLETION"]
     for index in page_indices:
-        print("page %d of %d" % (index, n_pages), end="\r")
         img = pdf[index].render(scale = dpi / 72).to_numpy()
         text = [''.join(filter(str.isalpha, s)) for s in pytesseract.image_to_string(img[0:HEIGHT]).lower().replace("\n", "").split(" ")]
         if debug:
@@ -79,15 +76,12 @@ def find_log_page(pdf, dpi=150, debug=False):
         if "log" in text and ("composite" in text or "completion" in text):
             return img, index
     else:
-        print("log image not found")
         return [], index
-    print("",end="")
 
 def split_and_save(save_path, image, img_size):
     img = Image.fromarray(image)
     w,h = img.size
     W,H = img_size, int(img_size/w*h)
-    print("resizing ", W, H)
     img = img.resize((W,H))
     head = img.crop((0, 0, W, img_size*4))
     for i in range(4):
@@ -96,34 +90,26 @@ def split_and_save(save_path, image, img_size):
     img.save(save_path.format("log"))
 
 def get_log_image(path, dpi=150, save=True):
-    print("Reading pdf %s" % path)
     write_notif("scanning pdf for log page\n",10)
-    start = time.time()
     save_path = os.path.join(os.path.curdir,"data/images/{0}_"+path[10:-4]+".jpg")
     pdf = open_pdf(path)
     log_page = find_log_page_in_summary(pdf)
     if not log_page:
-        print("not in summary checking longest")
         write_notif("not in summary checking longest\n", 11, write=False)
         log_page = get_longest_page_index(pdf)
         log_image = convert_page_to_image(pdf, log_page, dpi=dpi)
         if not verify_log_page(log_image):
-            print("not longest checking all")
             write_notif("not longest checking all\n", 12, write=False)
             log_image, log_page = find_log_page(pdf, dpi=150, debug=DEBUG)
             if len(log_image) == 0:
                 write_notif("log page not found", 100)
                 raise Exception("log not found")
     else:
-        print("found in summary")
         write_notif("found in summary\n",13, write=False)
-    print("found page: %d" % log_page)
     write_notif("found log page: %d" % log_page, 14, write=False)
     log_image = convert_page_to_image(pdf, log_page, dpi=dpi)
-
     if save:
         split_and_save(save_path, log_image, IMAGE_WIDTH)
-    elapsed = round(time.time() - start, 3)
     return log_image
 
 # get all the pdf files and save the log page
