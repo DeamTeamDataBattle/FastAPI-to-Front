@@ -6,6 +6,7 @@ from scripts.functions import write_notif, LOG_COLUMN_WIDTH
 #from tyFinder.decoupageImage import finale
 
 LABELS = ["legend", "log", "pattern"]
+IMPORTANT_NAMES = ["clay", "sand", "silt", "shale", "chalk", "lime", "chert", "marl"]
 
 def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
@@ -63,8 +64,11 @@ def extract_patterns(image, path):
                 if words:
                     word = ''.join([s for s in words[0].split(" ") if len(s) > 3])
                     text = ''.join([s for s in filter(str.isalpha, word)])
-                    print(text)
-                    cv2.imwrite(path.format(text),crop_img)
+                    for name in IMPORTANT_NAMES:
+                        if name in text:
+                            cv2.imwrite(path.format(text),crop_img)
+                    else:
+                        cv2.imwrite(path.format(text), crop_img)
 
 def find_log_legend(image, dir_path, pattern_dir):
     image = np.array(image)
@@ -103,7 +107,6 @@ def find_log_legend(image, dir_path, pattern_dir):
 # saves to pattern/ dir
 def extract_pattern_from_image(img, path):
     # only keep patterns with these names
-    important_names = ["clay", "sand", "silt", "shale", "chalk", "lime", "chert"]
     image = np.array(img)
     H,W,D = image.shape
 
@@ -111,8 +114,10 @@ def extract_pattern_from_image(img, path):
     image_text = cv2.threshold(image_text, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     image_text = cv2.bitwise_not(image_text)
     kernel = np.ones((2, 1), np.uint8)
-    image_text = cv2.dilate(image_text, kernel, iterations=1)
-    kernel = np.ones((2, 2), np.uint8)
+    #image_text = cv2.erode(image_text, kernel, iterations=1)
+    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]]) * 3
+    image_text = cv2.filter2D(image_text, -1, kernel)
+    kernel = np.ones((1, 1), np.uint8)
     image_text = cv2.erode(image_text, kernel, iterations=1)
 
     img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -148,8 +153,8 @@ def extract_pattern_from_image(img, path):
             x,y,w,h = box
             s = 5
             box_img = image[y+s:y+h-s, x+s:x+w-s]
-            if important_names:
-                for name in important_names:
+            if IMPORTANT_NAMES:
+                for name in IMPORTANT_NAMES:
                     if name in text:
                         cv2.imwrite(path.format("legend_"+name), box_img)
                         break

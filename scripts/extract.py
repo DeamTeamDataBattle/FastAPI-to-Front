@@ -45,7 +45,7 @@ def k_means(img_df,K_clusters):
 
     return (cluster_assignments,k_m)
 
-def get_legends(legend_folder, scl):
+def get_legends(legend_folder, width):
     legends_fpath = []
     legends_name = []
     for (path,dirs,files) in os.walk(legend_folder):
@@ -64,7 +64,7 @@ def get_legends(legend_folder, scl):
     for fpath in legends_fpath:
         img = cv2.imread(fpath)
         H,W,D = img.shape
-        img = cv2.resize(img, (int(scl*W), int(scl*H)))
+        img = cv2.resize(img, (width, int(width/W*H)))
         legends.append(img)
         shape = legends[-1].shape[:2]
         if shape[0] < legend_shape[0]:
@@ -120,7 +120,7 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     log_img = cv2.resize(log_img, (int(scl*W), int(scl*H)))
     
     write_notif("fetching legends", 55)
-    legend_shape, legends, legends_name = get_legends(PATH_LEGEND_FOLDER, scl)
+    legend_shape, legends, legends_name = get_legends(PATH_LEGEND_FOLDER, LOG_COLUMN_SAVE_WIDTH)
     
     # maybe a better algorithm for this ?
     k_clusters = len(legends)+3

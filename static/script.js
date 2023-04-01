@@ -63,7 +63,7 @@ async function upload_pdf_file() {
       setTimeout(() => {
         gotopie(data);
       },
-      1500);
+      500);
     }
     document.getElementById("pdf-upload").value = "";
   }
