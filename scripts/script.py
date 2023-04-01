@@ -1,6 +1,6 @@
 import os, sys, cv2, numpy as np, time, glob, pypdfium2 as pdfium, matplotlib.pylab as plt, pytesseract, matplotlib, torch, json
 from PIL import Image
-from scripts.get_log_page import get_log_image 
+from scripts.get_log_page import get_log_image
 from scripts.extract import cluster_log
 from scripts.functions import write_notif, LOG_COLUMN_WIDTH
 #from tyFinder.decoupageImage import finale
@@ -9,6 +9,92 @@ LABELS = ["legend", "log", "pattern"]
 
 def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
+
+
+def check_legend(img, path):
+    image_text = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    image_text = cv2.threshold(image_text, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    kernel = np.ones((2, 1), np.uint8)
+    #image_text = cv2.erode(image_text, kernel, iterations=2)
+    image_text = cv2.dilate(image_text, kernel, iterations=1)
+    #cv2.imwrite(path.format("text"), image_text)
+    text = pytesseract.image_to_string(image_text).lower()
+    if "lithological" in text or "legend" in text:
+        return True
+    return False
+
+def extract_patterns(image, path):
+    H, W, D = image.shape
+    image_text = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image_text = cv2.threshold(image_text, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    image_text = cv2.bitwise_not(image_text)
+    kernel = np.ones((2, 1), np.uint8)
+    #image_text = cv2.erode(image_text, kernel, iterations=1)
+    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]]) * 3
+    image_text = cv2.filter2D(image_text, -1, kernel)
+    kernel = np.ones((1, 1), np.uint8)
+    image_text = cv2.erode(image_text, kernel, iterations=1)
+
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img = cv2.GaussianBlur(img, (3, 3), 0)
+
+    img = cv2.threshold(img, 200, 200, cv2.THRESH_BINARY_INV)[1]
+    img = cv2.dilate(img, np.ones((1, 5)))
+    #img = cv2.GaussianBlur(img, (2, 2), 0)
+    contours, hierachy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    boxes = []
+    for c in contours:
+        x,y,w,h = cv2.boundingRect(c)
+        #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(255,0,0), thickness=1)
+        if 1.9 < w / h < 2.7 and h > 40:
+            boxes.append([x,y,w,h])
+            #image = cv2.rectangle(image, (x,y), (x+w, y+h), color=(0,0,255), thickness=2)
+    textes = []
+    s = 5
+    for c in contours:
+        x,y,w,h = cv2.boundingRect(c)
+        for bx, by, bw, bh in boxes:
+            if by < y < by+bh and bx < x < bx+bw*2:
+                crop_text = image_text[y-s:y+h+s,x-s:x+w+s]
+                crop_img = image[by+s:by+bh-s,bx+s:bx+bw-s]
+                text = pytesseract.image_to_string(crop_text)
+                words = [c for c in text.lower().split("\n") if len(c) > 3]
+                if words:
+                    word = ''.join([s for s in words[0].split(" ") if len(s) > 3])
+                    text = ''.join([s for s in filter(str.isalpha, word)])
+                    print(text)
+                    cv2.imwrite(path.format(text),crop_img)
+
+def find_log_legend(image, dir_path, pattern_dir):
+    image = np.array(image)
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img = cv2.GaussianBlur(img, (3, 3), 0)
+
+    img = cv2.threshold(img, 200, 200, cv2.THRESH_BINARY_INV)[1]
+    #img = cv2.erode(img, np.ones((1, 20)))
+    img = cv2.dilate(img, np.ones((1, 5)))
+    img = cv2.GaussianBlur(img, (3, 3), 0)
+
+    contours, hierachy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    imgs = []
+    s = 10
+    for c in contours:
+        x,y,w,h = cv2.boundingRect(c)
+        crop_img = image[y+s:y+h-s,x+s:x+w-s]
+        imgs.append(crop_img)
+
+    #cv2.imwrite(path.format("legend_p"), image)
+
+    for img in imgs:
+        if check_legend(img, dir_path):
+            #cv2.imwrite(path.format("legend"), img)
+            extract_patterns(img, pattern_dir+"/{}.jpg")
+        else:
+            cv2.imwrite(dir_path+"/log_image.jpg", img)
+    
+    return dir_path+"/log_image.jpg"
 
 # given a small image of pattern + name 
 # extract the pattern and name
@@ -95,6 +181,7 @@ def separate_log(coords, image, path):
     # resize to 75px width
     log_img = cv2.resize(log_img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
     H, W, D = log_img.shape
+    print(H,W,D)
     N = H//W
     widths = []
     x_start = []
@@ -258,7 +345,7 @@ def run_model_on_image(img, model, pattern_dir):
 """
 main script to run to get legend + patterns
 """
-def process(pdf_path):
+def process_pdf(pdf_path):
     # import model from trained weights
     model = torch.hub.load('ultralytics/yolov5', 'custom', path='scripts/weights.pt')
     write_notif("model loaded", 5)
@@ -272,9 +359,11 @@ def process(pdf_path):
     if not os.path.exists(pattern_dir):
         os.mkdir(pattern_dir)
 
-    # extract log image
     log_image = get_log_image(pdf_path, dpi=200, save=False)
     log_image = Image.fromarray(log_image)
+    cv2.imwrite(dir_path+"/log.jpg", log_image)
+    write_notif("log page found", 15)
+    # extract log image
     #cv2.imwrite(dir_path+"/log.jpg", log_image)
     write_notif("log page found", 15)
 
@@ -282,9 +371,13 @@ def process(pdf_path):
     # TODO could pass patterns in memory instead of writing and reading from disk
     # returns coordinates of log for each image
     log_coords = run_model_on_image(log_image, model, pattern_dir)
-
-    write_notif("straightening log", 40)
-    log_path = separate_log(log_coords, log_image, dir_path+"/log_{}.jpg")
+    if len(log_coords) == 0:
+        write_notif("log not found", 35)
+        write_notif("\ntrying alternative method", 35, write=False)
+        log_path = find_log_legend(log_image, dir_path, pattern_dir)
+    else:
+        write_notif("straightening log", 40)
+        log_path = separate_log(log_coords, log_image, dir_path+"/log_{}.jpg")
 
     write_notif("clustering log", 50)
     out = cluster_log(log_path, pattern_dir+"/")

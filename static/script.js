@@ -39,13 +39,12 @@ function gotopie(data) {
   window.location.href = "/pie?pdf="+data["pdf"];
 }
 
-async function upload_pdf() {
+async function upload_pdf_file() {
   let pdf = document.getElementById("pdf-upload").files[0];
   if (typeof pdf === 'undefined') {
     alert("please select a document first");
   } else {
     toggle_hide("upload-progress-bar");
-
     // send request
     let body = new FormData();
     body.append("file", pdf);

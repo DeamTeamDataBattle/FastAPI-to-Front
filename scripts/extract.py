@@ -74,6 +74,7 @@ def get_legends(legend_folder, scl):
     for i in range(len(legends)):
         legends[i] = cv2.resize(legends[i], tuple(legend_shape))
         # legends[i] = cv2.cvtColor(legends[i], cv2.COLOR_BGR2GRAY)
+        # vectorise and black and white
         legends[i] = preprocess_img(legends[i])
         # print("Legend shape",len(legends[0]))
     
@@ -117,11 +118,13 @@ def cluster_log(PATH_LOG, PATH_LEGEND_FOLDER):
     log_img = cv2.resize(log_img, (int(scl*W), int(scl*H)))
     
     write_notif("fetching legends", 55)
-    (legend_shape,legends,legends_name) = get_legends(PATH_LEGEND_FOLDER, scl)
+    legend_shape, legends, legends_name = get_legends(PATH_LEGEND_FOLDER, scl)
     
+    # maybe a better algorithm for this ?
     k_clusters = len(legends)+3
     
     write_notif("preprocessing", 60)
+    # vectorise the log.. 
     log_pre = preprocess_img(log_img,(legend_shape[1],log_img.shape[:2][0]))
     
     write_notif("process", 60)

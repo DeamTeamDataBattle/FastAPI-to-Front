@@ -93,6 +93,8 @@ def get_log_image(path, dpi=150, save=True):
     write_notif("scanning pdf for log page\n",10)
     save_path = os.path.join(os.path.curdir,"data/images/{0}_"+path[10:-4]+".jpg")
     pdf = open_pdf(path)
+    if len(pdf) == 1:
+        return convert_page_to_image(pdf, 0, dpi=dpi)
     log_page = find_log_page_in_summary(pdf)
     if not log_page:
         write_notif("not in summary checking longest\n", 11, write=False)

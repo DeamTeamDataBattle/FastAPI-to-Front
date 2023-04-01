@@ -10,7 +10,7 @@ from fastapi import FastAPI,Request,Path,File, UploadFile
 from pydantic import BaseModel
 
 # custom package
-from scripts.script import process
+from scripts.script import process_pdf
 from scripts.functions import *
 
 app = FastAPI()
@@ -67,7 +67,7 @@ def getPdfs():
     return {"files":files}
 
 @app.post("/upload-pdf")
-def create_upload_file(file: UploadFile = File(...)):
+def upload_pdf_file(file: UploadFile = File(...)):
     write_notif("preparing", 0)
     start = time.time()
     if file.headers["content-type"] != "application/pdf":
@@ -85,7 +85,7 @@ def create_upload_file(file: UploadFile = File(...)):
                     "error": "Error uploading the file {}".format(e)}
         finally:
             try:
-                res = process(path)
+                res = process_pdf(path)
                 save_results(path, res)
             except Exception as e:
                 return {"file": file,
