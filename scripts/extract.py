@@ -54,6 +54,8 @@ def get_legends(legend_folder, scl):
                 legends_fpath.append(path+f)
                 legends_name.append(f)
 
+    if len(legends_fpath) == 0:
+        raise Exception("patterns not found")
 
     INF = 1000000000
     legends = []

@@ -90,9 +90,11 @@ def find_log_legend(image, dir_path, pattern_dir):
     for img in imgs:
         if check_legend(img, dir_path):
             #cv2.imwrite(path.format("legend"), img)
-            extract_patterns(img, pattern_dir+"/{}.jpg")
+            extract_patterns(img, pattern_dir+"/legend_{}.jpg")
         else:
-            cv2.imwrite(dir_path+"/log_image.jpg", img)
+            H,W,D = img.shape
+            log_img = cv2.resize(img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
+            cv2.imwrite(dir_path+"/log_image.jpg", log_img)
     
     return dir_path+"/log_image.jpg"
 
