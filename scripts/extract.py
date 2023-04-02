@@ -18,7 +18,7 @@ start = time.time()
 # 4 = good results
 # 1.6 lowest
 # 2 quick
-scl = 4
+scl = 2
 
 SHAPE = [int(LOG_COLUMN_SAVE_HEIGHT*scl), int(LOG_COLUMN_SAVE_WIDTH*scl), 3]
 

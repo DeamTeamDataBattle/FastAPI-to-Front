@@ -361,6 +361,7 @@ def process_pdf(pdf_path):
 
     write_notif("ty placement", 90)
     #tf_out = finale(log_path)
+    print("ty")
 
     write_notif("end", 100)
     return {"info": "finished :D",
