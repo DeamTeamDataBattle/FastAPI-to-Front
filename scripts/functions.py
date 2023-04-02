@@ -5,9 +5,9 @@ mainly for the main.py
 
 """
 
-LOG_COLUMN_SAVE_WIDTH = 60
-LOG_COLUMN_SAVE_HEIGHT = 10
-LOG_COLUMN_WIDTH = 420
+LOG_COLUMN_SAVE_WIDTH = 100
+LOG_COLUMN_SAVE_HEIGHT = 45
+LOG_COLUMN_WIDTH = 100
 
 def write_notif(notif, percent=50, write=True):
     if not write:

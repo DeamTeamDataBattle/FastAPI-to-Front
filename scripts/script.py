@@ -11,6 +11,26 @@ LABELS = ["legend", "log", "pattern"]
 def map_coords(x,y,w_scl,h_scl):
     return int(x*w_scl), int(y*h_scl)
 
+def resize_patterns(pattern_dir):
+    patterns = [os.path.join(pattern_dir, f) for f in os.listdir(pattern_dir)]
+    pattern_imgs_orig = [cv2.imread(os.path.join(pattern_dir, f)) for f in os.listdir(pattern_dir)]
+    for i in range(len(pattern_imgs_orig)):
+        img = pattern_imgs_orig[i]
+        h,w,d = img.shape
+        img = cv2.resize(img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/w*h)))
+        pattern_imgs_orig[i] = img
+    min_height = min(i.shape[0] for i in pattern_imgs_orig)
+    for i in range(len(pattern_imgs_orig)):
+        img = pattern_imgs_orig[i]
+        h,w,d = img.shape
+        y1 = h//4
+        y2 = y1 + min_height
+        if y2 >= h:
+            y1 = h - min_height
+            y2 = h
+        img = img[y1:y2]
+        cv2.imwrite(patterns[i], img)
+    print("resized")
 
 def check_legend(img, path):
     image_text = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -130,9 +150,9 @@ def separate_log(coords, image, path):
     log_img = img[Y_min:Y_max, X_min-w:X_max+w]
     H, W, D = log_img.shape
     # resize to 75px width
-    log_img = cv2.resize(log_img, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
+    WIDTH = LOG_COLUMN_WIDTH*5
+    log_img = cv2.resize(log_img, (WIDTH, int(WIDTH/W*H)))
     H, W, D = log_img.shape
-    print(H,W,D)
     N = H//W
     widths = []
     x_start = []
@@ -233,6 +253,8 @@ def separate_log(coords, image, path):
             x1 = W - g
         img2 = log_img[y1:y1+W, x1:x1+g]
         img1 = np.concatenate((img1, img2), axis=0)
+    H,W,D = img1.shape
+    img1 = cv2.resize(img1, (LOG_COLUMN_WIDTH, int(LOG_COLUMN_WIDTH/W*H)))
     cv2.imwrite(path.format("image"), img1)
     return path.format("image")
 
@@ -333,6 +355,7 @@ def process_pdf(pdf_path):
         write_notif("straightening log", 40)
         log_path = separate_log(log_coords, log_image, dir_path+"/log_{}.jpg")
 
+    resize_patterns(pattern_dir)
     write_notif("clustering log", 50)
     out = cluster_log(dir_path, pattern_dir)
 
