@@ -24,8 +24,10 @@ async def http_exception_handler(request, exc):
 @app.get("/pie")
 async def pie(
         request: Request,
-        pdf: str = ""
+        pdf: str = "",
+        clean: int = 0,
     ):
+    print(clean)
     if pdf == "":
         # pdf not set redirecting
         return RedirectResponse(url="/")
@@ -41,6 +43,21 @@ async def pie(
     keys = ["sand", "clay", "lime", "shale", "salt", "silt", "chert"]
     comp = data["data"]
     total = comp.pop("total")
+    if clean == 1:
+        comps = {"other":0}
+        for k in keys:
+                 comps.update({k:0})
+        for key in comp:
+            value = comp[key]
+            f = False
+            for key_ in keys:
+                if key_ in key:
+                    f = True
+                    comps[key_] += value
+            if not f:
+                comps["other"] += value
+
+        comp = comps
     values = [round(100*v/total, 2) for v in list(comp.values())]
 
     return templates.TemplateResponse("pie.html", {

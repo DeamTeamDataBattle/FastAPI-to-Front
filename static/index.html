@@ -35,7 +35,7 @@
             let file = files[f];
             h.innerText = file;
             let a = document.createElement("a");
-            a.setAttribute("href", "/pie?pdf="+file);
+            a.setAttribute("href", "/pie?pdf="+file+"&clean=0");
             a.appendChild(h);
             div.appendChild(a);
         }

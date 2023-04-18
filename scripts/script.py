@@ -13,6 +13,8 @@ def map_coords(x,y,w_scl,h_scl):
 
 def resize_patterns(pattern_dir):
     patterns = [os.path.join(pattern_dir, f) for f in os.listdir(pattern_dir)]
+    if len(patterns) == 0:
+        raise Exception("No patterns found.. ")
     pattern_imgs_orig = [cv2.imread(os.path.join(pattern_dir, f)) for f in os.listdir(pattern_dir)]
     for i in range(len(pattern_imgs_orig)):
         img = pattern_imgs_orig[i]
@@ -187,11 +189,14 @@ def separate_log(coords, image, path):
             if img_w//6 < g < img_w//3:
                 #log_img_crop = cv2.rectangle(log_img_crop, (xs[j],0), (xs[j+1], W), color=(255,255,0), thickness=1)
                 pairs.append([xs[j], xs[j+1]])
-                gaps.append(np.ceil(g/2)*2)
+                widths.append(np.ceil(g/2)*2)
+                #gaps.append(np.ceil(g/2)*2)
 
         found = False
-        if gaps:
-            gap = int(max(set(gaps), key=gaps.count))
+        if widths:
+            gap = int(max(set(widths), key=widths.count))
+        #if gaps:
+            #gap = int(max(set(gaps), key=gaps.count))
             widths.append(gap)
             for x1, x2 in pairs:
                 x1=min(x1,x2)
@@ -303,11 +308,13 @@ def run_model_on_image(img, model, pattern_dir):
         if res["name"]:
             j = 0
             for key, value in res["class"].items():
-                if value == 2:
+                if value == 2 or value == 0:
+                    # pattern found
                     pattern = extract_image_from_res(cropped_large, res, key, width_scl, height_scl)
                     #cv2.imwrite(pattern_dir+"/%s_%d.jpg" % (key, i), pattern)
                     extract_patterns(np.array(pattern), pattern_dir+"/{}.jpg")
                 if value == 1:
+                    # log found
                     xmin = int(res["xmin"][key])
                     ymin = int(res["ymin"][key])
                     xmax = int(res["xmax"][key])
@@ -315,6 +322,7 @@ def run_model_on_image(img, model, pattern_dir):
                     xmin, ymin = map_coords(xmin, ymin, width_scl, height_scl)
                     xmax, ymax = map_coords(xmax, ymax, width_scl, height_scl)
                     log_coords.append([xmin, ymin, xmax, ymax])
+
                 j += 1
     return log_coords
 

@@ -36,7 +36,7 @@ async function get_notifications() {
 }
 
 function gotopie(data) {
-  window.location.href = "/pie?pdf="+data["pdf"];
+  window.location.href = "/pie?pdf="+data["pdf"]+"&clean=1";
 }
 
 async function upload_pdf_file() {
